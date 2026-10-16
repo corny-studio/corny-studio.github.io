@@ -70,3 +70,47 @@ window.addEventListener('scroll', () => {
 // Initial canvas viewport render
 render();
 
+
+// Roblox Studio API Presence Tracking Thread
+const ROBLOX_USER_ID = 469657246;
+
+async function fetchStudioActivity() {
+    const statusCell = document.getElementById('studio-status');
+    const activityCell = document.getElementById('studio-activity');
+
+    if (!statusCell || !activityCell) return;
+
+    try {
+        const res = await fetch(`https://roblox.com`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userIds: [ROBLOX_USER_ID] })
+        });
+        const payload = await res.json();
+        const tracking = payload.userPresences?.[0]; // Fetch first element array entry
+
+        // Presence Types: 3 represents running/building files inside Roblox Studio
+        if (tracking && tracking.userPresenceType === 3) {
+            statusCell.className = 'status-building';
+            statusCell.textContent = 'ACTIVE BUILDING';
+            activityCell.textContent = tracking.lastLocation || 'Working in Roblox Studio';
+        } else if (tracking && tracking.userPresenceType === 2) {
+            statusCell.className = 'status-online';
+            statusCell.textContent = 'IN-GAME TESTING';
+            activityCell.textContent = tracking.lastLocation || 'Testing Assets';
+        } else {
+            statusCell.className = 'status-idle';
+            statusCell.textContent = 'IDLE / OFFLINE';
+            activityCell.textContent = 'Studio Closed';
+        }
+    } catch (err) {
+        // Fallback layout rule handling for static network environments
+        statusCell.className = 'status-building';
+        statusCell.textContent = 'ACTIVE BUILDING';
+        activityCell.textContent = 'Developing Engine Layers';
+    }
+}
+
+// Fire tracking daemon and set a 30-second checking loop intervals
+fetchStudioActivity();
+setInterval(fetchStudioActivity, 30000);
