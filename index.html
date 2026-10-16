@@ -17,6 +17,10 @@
             --border-glow: #30363d;
         }
 
+                html {
+            background-color: var(--bg-main);
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
             background: transparent;
@@ -37,7 +41,8 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-       background-color: var(--bg-main);
+                   pointer-events: none;
+
        }
 
         header {
