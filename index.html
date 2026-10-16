@@ -188,6 +188,67 @@
             font-weight: bold;
         }
 
+                /* Hub Link Grids & Badges */
+        .links-hub {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .hub-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-muted);
+            color: var(--text-bright);
+            padding: 0.65rem 1.25rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .hub-btn:hover {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+            color: var(--accent-cyan);
+            transform: translateY(-2px);
+        }
+
+        .hub-btn.discord-main {
+            border-color: rgba(114, 137, 218, 0.4);
+        }
+        .hub-btn.discord-main:hover {
+            border-color: #7289da;
+            box-shadow: 0 0 12px rgba(114, 137, 218, 0.25);
+            color: #7289da;
+        }
+
+        /* Asset Showcases */
+        .asset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }
+        .project-meta {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+        .lang-badge {
+            background: rgba(255,255,255,0.05);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-muted);
+        }
+
         /* Section Headings */
         h2 {
             font-size: 1.75rem;
@@ -258,39 +319,44 @@
         </nav>
     </header>
 
-    <main>
+       <main>
         <!-- Hero Section -->
         <section class="hero">
             <h1>CORNY<span>//</span>STUDIO</h1>
-            <p class="subtitle">DevSecOps & Autonomous Systems Architect</p>
-            <p class="lead-text">Building high-performance, secure digital architecture and autonomous solutions.</p>
-            <div class="meta-links">
-                <a href="#architecture">View Systems Architecture &rarr;</a>
+            <p class="subtitle">Autonomous Systems Architect & Game Developer</p>
+            <p class="lead-text">Building high-performance, secure digital frameworks and production-grade gaming environments. Specialized in server-authoritative state logic, full-stack automation, and zero-trust engineering layouts.</p>
+            
+            <!-- Complete Connected Communications Network Hub -->
+            <div class="links-hub">
+                <a href="https://discord.gg" target="_blank" class="hub-btn discord-main">💬 Core Studio Discord Server</a>
+                <a href="https://github.com/corny-studio" target="_blank" class="hub-btn">🐙 GitHub (corny-studio)</a>
+                <a href="https://roblox.com" target="_blank" class="hub-btn">🎮 Roblox Production Account</a>
+                <a href="https://instagram.com" target="_blank" class="hub-btn">📸 Instagram (Fable Layouts)</a>
             </div>
         </section>
 
-        <!-- Live Status Monitoring Terminal Layout Section -->
+        <!-- Live Status Monitoring Terminal Section -->
         <section id="terminal">
             <div class="terminal-block">
-                <div class="terminal-header">corny@studio:~# status-monitor --live</div>
+                <div class="terminal-header">corny@studio:~# engine-monitor --live</div>
                 <table class="terminal-grid">
                     <thead>
                         <tr>
-                            <th>SYSTEM LAYER</th>
+                            <th>PRODUCTION ENVIRONMENT</th>
                             <th>STATUS</th>
-                            <th>LATENCY</th>
+                            <th>ENGINE FRAMEWORK</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Autonomous Pipeline Framework</td>
-                            <td class="check-complete">ONLINE</td>
-                            <td>4ms</td>
+                            <td>Corny Games Studio System</td>
+                            <td class="check-complete">ONLINE [14 Members]</td>
+                            <td>Roblox Engine v5.0</td>
                         </tr>
                         <tr>
-                            <td>Core Security Stacks & Guardrails</td>
+                            <td>Secure Automation Engine</td>
                             <td class="check-complete">ACTIVE</td>
-                            <td>12ms</td>
+                            <td>Python / Node.js Logic</td>
                         </tr>
                     </tbody>
                 </table>
@@ -301,13 +367,50 @@
         <section id="architecture">
             <h2>TECHNICAL ARCHITECTURE PILLARS</h2>
             <div class="pillar-layout">
+                
+                <!-- Pillar One: DevSecOps -->
                 <div class="pillar-card">
                     <div class="card-header-row">
-                        <h3 class="pillar-title">DevSecOps & Automation Pipeline</h3>
+                        <h3 class="pillar-title">DevSecOps & Systems Automation</h3>
                         <span class="skill-metric metric-elite">Elite Mastery</span>
                     </div>
-                    <p>Designing robust automation loops, continuous deployment infrastructure, and zero-trust system compliance structures across all scaling architectures.</p>
+                    <p>Designing robust automation loops, continuous deployment layout frameworks, and zero-trust system compliance structures across all scaling architectures. Veteran cybersecurity application builder with active validation stacks.</p>
                 </div>
+
+                <!-- Pillar Two: Game Architecture -->
+                <div class="pillar-card">
+                    <div class="card-header-row">
+                        <h3 class="pillar-title">Full-Stack Game Architecture & Systems Design</h3>
+                        <span class="skill-metric metric-mastery">Expert Mastery</span>
+                    </div>
+                    <p>Engineered distributed network frameworks handling server-authoritative states, secure telemetry loops, and low-latency interaction structures. Specializing in advanced modular tracking layers.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Production Asset Matrix Section -->
+        <section id="projects">
+            <h2>FEATURED PRODUCTION ASSETS</h2>
+            <div class="asset-grid">
+                
+                <div class="pillar-card">
+                    <h3 class="pillar-title">Scaling-dshbrd</h3>
+                    <p>Core development environment for live telemetry analysis, tracking global runtime events, and managing cross-server asset synchronization framework states seamlessly.</p>
+                    <div class="project-meta">
+                        <span class="lang-badge">Lua</span>
+                        <span class="lang-badge">Server Authoritative</span>
+                    </div>
+                </div>
+
+                <div class="pillar-card">
+                    <h3 class="pillar-title">Corny Games Studio Engine</h3>
+                    <p>Consolidated production environment deploying responsive, scaling interactive layers and customized data management structures across premium gaming layouts.</p>
+                    <div class="project-meta">
+                        <span class="lang-badge">Game Dev</span>
+                        <span class="lang-badge">Data Persistence</span>
+                    </div>
+                </div>
+
             </div>
         </section>
     </main>
