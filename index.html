@@ -362,46 +362,70 @@
     <!-- Dynamic Moving Wallpaper Base Component -->
     <canvas id="wallpaper-canvas"></canvas>
 
-       <header>
-        <div class="nav-container">
+         <header style="background-color: rgba(13, 17, 23, 0.85); border-bottom: 1px solid var(--border-muted); position: fixed; width: 100%; top: 0; z-index: 1000; backdrop-filter: blur(12px);">
+        <div class="nav-container" style="max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; box-sizing: border-box;">
             <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <!-- Custom Integrated Corn & Globe Badge Logo -->
-                <svg viewBox="0 0 200 200" width="40" height="40" xmlns="http://w3.org" style="vertical-align: middle;">
-                    <!-- Green Husks Base -->
+                <svg viewBox="0 0 200 200" width="36" height="36" xmlns="http://w3.org" style="vertical-align: middle;">
                     <path d="M60,120 C50,90 65,70 80,85 C70,110 80,130 100,140 C120,130 130,110 120,85 C135,70 150,90 140,120 C125,145 75,145 60,120 Z" fill="#00A859"/>
-                    <!-- Yellow Corn Core Body -->
                     <path d="M80,85 C80,50 90,30 100,30 C110,30 120,50 120,85 C120,115 110,135 100,135 C90,135 80,115 80,85 Z" fill="#FFD100"/>
-                    <!-- Integrated Website Globe Network Grid Overlay -->
                     <g transform="translate(73, 60) scale(0.9)" stroke="#111111" stroke-width="3" fill="none" opacity="0.95">
                         <circle cx="30" cy="30" r="24" />
                         <path d="M6,30 L54,30 M30,6 L30,54" />
                         <path d="M14,14 C22,22 22,38 14,46 M46,14 C38,22 38,38 46,46" />
                     </g>
                 </svg>
-                <a href="#" class="logo" style="margin: 0;">CORNY<span>//GAMES</span></a>
+                <span style="font-size: 1.1rem; font-weight: 800; color: var(--text-bright); font-family: monospace; letter-spacing: 1px;">CORNY//GAMES</span>
             </div>
             <div class="nav-links">
-                <!-- Add navigation menu links here if needed later -->
+                <!-- Links Hub View Switch Button -->
+                <button id="market-toggle-btn" class="hub-btn" style="cursor: pointer; border: 1px solid var(--border-muted); background: var(--bg-card); color: var(--text-bright); padding: 0.5rem 1rem; border-radius: 6px; font-family: monospace; font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease;">
+                    <i data-lucide="shopping-bag" style="width: 14px; height: 14px; color: var(--accent-cyan);"></i>
+                    Studio Market
+                </button>
             </div>
         </div>
     </header>
 
-    <main>
-        <!-- Hero Section -->
-        <section class="hero">
-            <h1>CORNY<span>//GAMES</span></h1>
-
-            <h1>CORNY<span>//</span>STUDIO</h1>
-            <p class="subtitle">Autonomous Systems Architect & Game Developer</p>
-            <p class="lead-text">Building high-performance, secure digital frameworks and production-grade gaming environments. Specialized in server-authoritative state logic, full-stack automation, and zero-trust engineering layouts.</p>
-            
-            <!-- Mobile-Responsive Connected Communications Hub Links -->
-            <div class="links-hub">
-                <a href="https://discord.com/channels/1557657720851664917/1557662408015872060" target="_blank" class="hub-btn discord-main">💬 Core Studio Discord Server</a>
-                <a href="https://github.com/corny-studio" target="_blank" class="hub-btn">🐙 GitHub (corny-studio)</a>
-                <a href="https://www.roblox.com/communities/187537803/Corny-Games-Studio#!/about" target="_blank" class="hub-btn">🎮 Roblox Group</a>
-            </div>
+    <main style="max-width: 1100px; margin: 100px auto 0 auto; padding: 0 2rem; box-sizing: border-box;">
+        <!-- Unified Main Title Section -->
+        <section class="hero" style="padding: 1.5rem 0 2rem 0;">
+            <h1 style="font-size: 2.75rem; color: var(--text-bright); margin: 0 0 0.5rem 0; font-weight: 800; letter-spacing: -0.5px;">CORNY//STUDIO</h1>
+            <div class="subtitle" style="font-size: 1.2rem; color: var(--accent-cyan); margin-bottom: 1rem; font-family: monospace; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">// Systems Architect & Gameplay Engineer</div>
         </section>
+<main style="max-width: 1100px; margin: 100px auto 0 auto; padding: 0 2rem; box-sizing: border-box;">
+    <!-- Unified Main Title Section -->
+    <section class="hero" style="padding: 1.5rem 0 2rem 0;">
+        <h1 style="font-size: 2.75rem; color: var(--text-bright); margin: 0 0 0.5rem 0; font-weight: 800; letter-spacing: -0.5px;">CORNY<span>//STUDIO</span></h1>
+        <div class="subtitle" style="font-size: 1.2rem; color: var(--accent-cyan); margin-bottom: 1rem; font-family: monospace; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">// Systems Architect & Gameplay Engineer</div>
+        <p class="lead-text" style="font-size: 1.05rem; max-width: 850px; color: var(--text-main); margin-bottom: 1.5rem;">Building high-performance, secure digital frameworks and production-grade gaming environments. Specialized in server-authoritative state logic, full-stack automation, and zero-trust engineering setups.</p>
+        
+        <!-- Connected Communications Hub Links -->
+        <div class="links-hub" style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; margin-bottom: 1.5rem;">
+            <a href="https://discord.com" target="_blank" class="hub-btn discord-main">Core Studio Discord Server</a>
+            <a href="https://github.com" target="_blank" class="hub-btn">GitHub (corny-studio)</a>
+            <a href="https://roblox.com" target="_blank" class="hub-btn">Roblox Group</a>
+        </div>
+    </section>
+
+    <!-- Top-Level Biographical Direct Quote Section -->
+    <section id="biography" style="padding: 1rem 0 2.5rem 0;">
+        <div class="bio-quote-container" style="background-color: var(--bg-card); border: 1px solid var(--border-muted); border-radius: 8px; padding: 2.5rem; margin-bottom: 1rem; position: relative;">
+            <p class="bio-text" style="color: var(--text-bright); font-size: 1.15rem; line-height: 1.75; font-style: italic; margin: 0;">
+                "Hi, I'm Corny! Welcome to the studio workspace. I'm a solo game developer and full-stack systems engineer focused on building highly optimized, server-authoritative engine frameworks, automation layers, and fast data synchronization tools. Whether it's crafting realistic game economies, configuring custom API monitoring logic, or writing smooth backend integrations, I design secure and production-ready architectures from scratch. Take a look around at the engine monitors below to check out what I'm actively working on in the studio right now!"
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-top: 2rem; font-family: monospace; font-size: 0.85rem;">
+                <div style="border-left: 2px solid var(--accent-cyan); padding-left: 1rem;">
+                    <strong style="color: var(--text-bright); display: block; margin-bottom: 0.25rem;">GAMEPLAY ENGINE PIPELINES</strong>
+                    Authoritative network logic, custom interface selections, and fluid mechanical setups.
+                </div>
+                <div style="border-left: 2px solid #8b5cf6; padding-left: 1rem;">
+                    <strong style="color: var(--text-bright); display: block; margin-bottom: 0.25rem;">DEVSECOPS & AUTOMATION</strong>
+                    Autonomous terminal workflows, performance monitors, and reliable server-to-server data integrity tools.
+                </div>
+            </div>
+        </div>
+    </section>
 
         <!-- Live Status Monitoring Terminal Section -->
         <section id="terminal">
@@ -437,6 +461,73 @@
                 </table>
             </div>
         </section>
+            <!-- Corny Studio Market Subpage Layout (Hidden by Default) -->
+        <section id="studio-market-page" style="display: none; border-top: 1px solid var(--border-muted); padding-top: 3rem; margin-bottom: 5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2.5rem;">
+                <h2 style="margin: 0; font-family: monospace;">// CORNY_STUDIO_MARKET</h2>
+                <button id="close-market-btn" style="background: transparent; border: 1px solid var(--border-muted); color: var(--text-bright); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-family: monospace; font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Return Home
+                </button>
+            </div>
+
+            <!-- Asset Filters Row -->
+            <div class="filter-bar" style="display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap; font-family: monospace; font-size: 0.8rem;">
+                <button class="filter-opt active" style="background: var(--accent-cyan); color: #000000; border: none; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; cursor: pointer;">All Assets (1)</button>
+                <button class="filter-opt" style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-muted); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Frameworks</button>
+                <button class="filter-opt" style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-muted); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Scripts</button>
+                <button class="filter-opt" style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-muted); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Automation</button>
+            </div>
+
+            <!-- Marketplace Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem;">
+                <!-- Asset Card -->
+                <div style="background-color: var(--bg-card); border: 1px solid var(--border-muted); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;">
+                    
+                    <!-- Media Asset Clip Window -->
+                    <div style="width: 100%; height: 210px; background-color: #000000; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border-muted);">
+                        <div style="font-family: monospace; font-size: 0.8rem; color: var(--text-main); text-align: center; padding: 1rem;">
+                            <i data-lucide="video" style="width: 32px; height: 32px; color: var(--accent-cyan); margin-bottom: 0.5rem; display: block; margin-left: auto; margin-right: auto;"></i>
+                            [ Roblox Studio Settings Preview Clip Placeholder ]
+                        </div>
+                    </div>
+
+                    <div style="padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                                <h3 style="color: var(--text-bright); margin: 0; font-size: 1.2rem; font-family: monospace;">Premium Studio Core Framework</h3>
+                                <span style="background-color: rgba(0, 240, 255, 0.1); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); font-family: monospace; font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold; white-space: nowrap;">
+                                    R$ 1,000
+                                </span>
+                            </div>
+                            <span style="font-size: 0.7rem; color: var(--accent-green); background: rgba(57, 255, 20, 0.05); border: 1px solid var(--accent-green); padding: 0.1rem 0.4rem; border-radius: 4px; font-family: monospace; font-weight: bold; display: inline-block; margin-bottom: 1rem; text-transform: uppercase;">
+                                [Exclusive: 1 Entry Remaining]
+                            </span>
+                            <p style="font-size: 0.85rem; color: var(--text-main); line-height: 1.5; margin: 0 0 1.5rem 0;">
+                                High-performance modular environment framework built to enforce clean runtime execution, handle cross-system asset interactions seamlessly, and load decoupled system architecture parameters without adding latency.
+                            </p>
+                        </div>
+
+                        <div style="border-top: 1px dashed var(--border-muted); padding-top: 1rem; font-family: monospace; font-size: 0.8rem;">
+                            <div style="margin-bottom: 0.5rem; color: var(--text-main);">
+                                <strong style="color: var(--text-bright);">Rights:</strong> Single group/universe application scope. Commercial use approved. Resale or redistribution is strictly forbidden.
+                            </div>
+                            <div style="margin-bottom: 0.5rem; color: var(--text-main);">
+                                <strong style="color: var(--text-bright);">Payment Method:</strong> Managed via authorized Roblox Developer Store transaction assets transfer paths.
+                            </div>
+                            <div style="margin-bottom: 1.25rem; color: var(--text-main);">
+                                <strong style="color: var(--text-bright);">Contact Scope:</strong> Submit an integration ticket or connection query inside the official Corny Games Studio community cluster.
+                            </div>
+                            
+                            <a href="https://roblox.com" target="_blank" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background-color: var(--bg-main); border: 1px solid var(--border-muted); color: var(--text-bright); text-decoration: none; padding: 0.65rem; border-radius: 6px; box-sizing: border-box; font-weight: bold; transition: all 0.2s ease;">
+                                <i data-lucide="shopping-bag" style="width: 16px; height: 16px; color: var(--accent-green);"></i>
+                                View Developer Group Marketplace
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
 
         <!-- Technical Pillars Content Layout Grid -->
         <section id="architecture">
