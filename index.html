@@ -25,17 +25,18 @@
             padding: 0;
             line-height: 1.6;
             overflow-x: hidden;
+            position: relative;
+
         }
 
         /* Moving Wallpaper Canvas */
         #wallpaper-canvas {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             z-index: -1;
-            background-color: var(--bg-main);
         }
 
         header {
@@ -362,9 +363,14 @@
             .nav-links { display: none; }
             .pillar-card { padding: 1.75rem; }
         }
-    </style>
+     }
+</style>
 </head>
 <body>
+
+<!-- Dynamic Moving Wallpaper Base Component -->
+<canvas id="wallpaper-canvas"></canvas>
+
 
     <!-- Dynamic Moving Wallpaper Base Component -->
     <canvas id="wallpaper-canvas"></canvas>
