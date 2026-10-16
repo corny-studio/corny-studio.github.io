@@ -5,7 +5,7 @@ let particles = [];
 
 function resize() {
     canvas.width = window.innerWidth;
-    canvas.height = document.documentElement.scrollHeight; // Matches total scroll height
+    canvas.height = Math.max(window.innerHeight, document.documentElement.scrollHeight);
 }
 window.addEventListener('resize', resize);
 resize();
