@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="https://unpkg.com"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Corny | DevSecOps & Autonomous Systems Architect</title>
@@ -303,6 +304,57 @@
             border: 1px solid var(--accent-green);
             color: var(--accent-green);
         }
+                /* Compact Badges Engine Grid Addition */
+        .badges-section {
+            width: 100%;
+            margin-bottom: 2rem;
+        }
+        .badges-section h3 {
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            color: var(--text-main);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+        }
+        .badge-container {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+        }
+        .mini-badge {
+            background: var(--bg-card);
+            border: 1px solid var(--border-muted);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            padding: 0.6rem 1rem;
+            flex: 1;
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+        .mini-badge:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+        }
+        .badge-icon {
+            width: 18px;
+            height: 18px;
+            margin-right: 0.75rem;
+        }
+        .elite .badge-icon { color: #8b5cf6; }
+        .expert .badge-icon { color: var(--accent-green); }
+        .badge-info { display: flex; flex-direction: column; }
+        .badge-title { font-size: 0.85rem; font-weight: 600; color: var(--text-bright); }
+        .badge-status { font-size: 0.7rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px; }
+        .elite .badge-status { color: #8b5cf6; }
+        .expert .badge-status { color: var(--accent-green); }
+
+        /* Extended Live Status Classes */
+        .status-building { color: #38bdf8; font-weight: bold; }
+        .status-idle { color: var(--text-main); }
+        .status-online { color: var(--accent-green); font-weight: bold; }
+        .status-active { color: var(--accent-cyan); font-weight: bold; }
+        .status-checking { color: #e3b341; font-weight: bold; }
+
     </style>
 </head>
 <body>
@@ -310,18 +362,35 @@
     <!-- Dynamic Moving Wallpaper Base Component -->
     <canvas id="wallpaper-canvas"></canvas>
 
-    <header>
-        <nav class="nav-container">
-            <a href="#" class="logo">CORNY<span>//</span>STUDIO</a>
+       <header>
+        <div class="nav-container">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <!-- Custom Integrated Corn & Globe Badge Logo -->
+                <svg viewBox="0 0 200 200" width="40" height="40" xmlns="http://w3.org" style="vertical-align: middle;">
+                    <!-- Green Husks Base -->
+                    <path d="M60,120 C50,90 65,70 80,85 C70,110 80,130 100,140 C120,130 130,110 120,85 C135,70 150,90 140,120 C125,145 75,145 60,120 Z" fill="#00A859"/>
+                    <!-- Yellow Corn Core Body -->
+                    <path d="M80,85 C80,50 90,30 100,30 C110,30 120,50 120,85 C120,115 110,135 100,135 C90,135 80,115 80,85 Z" fill="#FFD100"/>
+                    <!-- Integrated Website Globe Network Grid Overlay -->
+                    <g transform="translate(73, 60) scale(0.9)" stroke="#111111" stroke-width="3" fill="none" opacity="0.95">
+                        <circle cx="30" cy="30" r="24" />
+                        <path d="M6,30 L54,30 M30,6 L30,54" />
+                        <path d="M14,14 C22,22 22,38 14,46 M46,14 C38,22 38,38 46,46" />
+                    </g>
+                </svg>
+                <a href="#" class="logo" style="margin: 0;">CORNY<span>//GAMES</span></a>
+            </div>
             <div class="nav-links">
                 <!-- Add navigation menu links here if needed later -->
             </div>
-        </nav>
+        </div>
     </header>
 
-          <main>
+    <main>
         <!-- Hero Section -->
         <section class="hero">
+            <h1>CORNY<span>//GAMES</span></h1>
+
             <h1>CORNY<span>//</span>STUDIO</h1>
             <p class="subtitle">Autonomous Systems Architect & Game Developer</p>
             <p class="lead-text">Building high-performance, secure digital frameworks and production-grade gaming environments. Specialized in server-authoritative state logic, full-stack automation, and zero-trust engineering layouts.</p>
@@ -346,18 +415,25 @@
                             <th>ENGINE FRAMEWORK</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr>
-                            <td>Corny Games Studio System</td>
-                            <td class="check-complete">ONLINE [14 Members]</td>
-                            <td>Roblox Engine v5.0</td>
-                        </tr>
-                        <tr>
-                            <td>Secure Automation Engine</td>
-                            <td class="check-complete">ACTIVE</td>
-                            <td>Python / Node.js Logic</td>
-                        </tr>
-                    </tbody>
+                          <tbody>
+            <tr>
+                <td>Corny Games Studio System</td>
+                <td class="status-online">ONLINE [14 Members]</td>
+                <td>Roblox Engine v5.0</td>
+            </tr>
+            <tr>
+                <td>Secure Automation Engine</td>
+                <td class="status-active">ACTIVE</td>
+                <td>Python / Node.js Logic</td>
+            </tr>
+            <!-- New Live Studio Activity Tracker Node -->
+            <tr id="studio-monitor-row">
+                <td>Roblox Studio Active Session</td>
+                <td id="studio-status" class="status-checking">POLLING API...</td>
+                <td id="studio-activity">User ID: 469657246</td>
+            </tr>
+        </tbody>
+
                 </table>
             </div>
         </section>
@@ -365,27 +441,29 @@
         <!-- Technical Pillars Content Layout Grid -->
         <section id="architecture">
             <h2>TECHNICAL ARCHITECTURE PILLARS</h2>
-            <div class="pillar-layout">
-                
-                <!-- Pillar One: DevSecOps -->
-                <div class="pillar-card">
-                    <div class="card-header-row">
-                        <h3 class="pillar-title">DevSecOps & Systems Automation</h3>
-                        <span class="skill-metric metric-elite">Elite Mastery</span>
+                  <div class="badges-section">
+            <div class="badge-container">
+                <!-- DevSecOps Badge Element -->
+                <div class="mini-badge elite">
+                    <i data-lucide="shield-check" class="badge-icon"></i>
+                    <div class="badge-info">
+                        <span class="badge-title">DevSecOps & Systems Automation</span>
+                        <span class="badge-status">Elite Mastery</span>
                     </div>
-                    <p>Designing robust automation loops, continuous deployment layout frameworks, and zero-trust system compliance structures across all scaling architectures. Veteran cybersecurity application builder with active validation stacks.</p>
                 </div>
-
-                <!-- Pillar Two: Game Architecture -->
-                <div class="pillar-card">
-                    <div class="card-header-row">
-                        <h3 class="pillar-title">Full-Stack Game Architecture & Systems Design</h3>
-                        <span class="skill-metric metric-mastery">Expert Mastery</span>
+                
+                <!-- Game Architecture Badge Element -->
+                <div class="mini-badge expert">
+                    <i data-lucide="cpu" class="badge-icon"></i>
+                    <div class="badge-info">
+                        <span class="badge-title">Full-Stack Game Architecture & Systems Design</span>
+                        <span class="badge-status">Expert Mastery</span>
                     </div>
-                    <p>Engineered distributed network frameworks handling server-authoritative states, secure telemetry loops, and low-latency interaction structures. Specializing in advanced modular tracking layers.</p>
                 </div>
             </div>
-        </section>
+        </div>
+            
+       </section>
 
         <!-- Production Asset Matrix Section -->
         <section id="projects">
@@ -413,6 +491,11 @@
             </div>
         </section>
     </main>
+
+            <script>
+        // Mounts and renders Vector Icons to the DOM elements instantly
+        lucide.createIcons();
+    </script>
 
     <script src="./script.js"></script>
 </body>
