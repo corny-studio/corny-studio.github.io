@@ -114,3 +114,38 @@ async function fetchStudioActivity() {
 // Fire tracking daemon and set a 30-second checking loop intervals
 fetchStudioActivity();
 setInterval(fetchStudioActivity, 30000);
+
+// Corny Studio Marketplace View Switching Router Logic
+document.addEventListener('DOMContentLoaded', () => {
+    const marketBtn = document.getElementById('market-toggle-btn');
+    const closeMarketBtn = document.getElementById('close-market-btn');
+    
+    // Core Layout Panels
+    const heroSection = document.querySelector('.hero');
+    const bioSection = document.getElementById('biography');
+    const archSection = document.getElementById('architecture');
+    const termSection = document.getElementById('terminal');
+    const marketPage = document.getElementById('studio-market-page');
+
+    if (marketBtn && marketPage) {
+        // Toggle Into Marketplace View Screen Panel
+        marketBtn.addEventListener('click', () => {
+            if (heroSection) heroSection.style.display = 'none';
+            if (bioSection) bioSection.style.display = 'none';
+            if (archSection) archSection.style.display = 'none';
+            if (termSection) termSection.style.display = 'none';
+            marketPage.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Toggle Out Back Home to Portfolio Home View
+        closeMarketBtn.addEventListener('click', () => {
+            marketPage.style.display = 'none';
+            if (heroSection) heroSection.style.display = 'block';
+            if (bioSection) bioSection.style.display = 'block';
+            if (archSection) archSection.style.display = 'block';
+            if (termSection) termSection.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+});
