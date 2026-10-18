@@ -8,6 +8,19 @@
 (function () {
   "use strict";
 
+  // If agents.html is older than this file, say so on screen instead of silently staying locked
+  var REQUIRED = ["locked", "app", "hud", "channel-list", "chan-title", "chan-topic", "conn", "members-toggle", "messages", "jump",
+                  "slash-pop", "chips", "hint", "typing", "msg-input", "send-btn", "members", "member-list", "toast"];
+  var missingIds = REQUIRED.filter(function (id) { return !document.getElementById(id); });
+  if (missingIds.length) {
+    var lk = document.getElementById("locked");
+    if (lk) {
+      lk.hidden = false;
+      lk.textContent = "agents.html is out of date (missing: " + missingIds.join(", ") + "). Upload the newest agents.html next to agents.js, then hard refresh with Ctrl+Shift+R.";
+    }
+    return;
+  }
+
   var cfg = window.CORNY_CONFIG || {};
   var RELAY = (cfg.relayUrl || "").replace(/\/$/, "");
   var GROUP = cfg.robloxGroupId || "";
