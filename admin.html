@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Corny Studio // Access Control Core</title>
+    
+    <!-- Load TradingView Script Library Early -->
+    <script type="text/javascript" src="https://tradingview.com"></script>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
         body { background-color: #0b0c10; color: #66fcf1; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow-x: hidden; }
@@ -99,7 +103,7 @@
                     <div class="widget-title">🔒 System Configuration</div>
                     <div style="font-size: 0.75rem; color: #85929E; line-height: 1.4;">
                         • Cluster Node: GitHub Pages<br>
-                        • Script Module: Static Client Core<br>
+                        • Script Module: Inline CSS Core<br>
                         • Engine Handshake: Verified
                     </div>
                 </div>
@@ -121,22 +125,43 @@
                 <!-- TradingView Telemetry Real-time Grid -->
                 <div class="market-grid">
                     <div class="chart-block">
-                        <div class="tradingview-widget-container" style="height:100%; width:100%;">
-                            <div id="tradingview_btc" style="height:100%; width:100%;"></div>
-                            <script type="text/javascript" src="https://tradingview.com"></script>
-                            <script type="text/javascript">
-                            new TradingView.MediumWidget({
-                                "symbols": [["Bitcoin / US Dollar", "BINANCE:BTCUSDT|1D"]],
-                                "chartOnly": false, "width": "100%", "height": "100%", "locale": "en", "colorTheme": "dark", "autosize": true, "showVolume": false, "hideDateProperties": false, "hideMarketStatus": false, "hideSymbolLogo": false, "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif", "underlineColor": "rgba(102, 252, 241, 0.15)", "gridLineColor": "rgba(42, 46, 57, 0.3)", "trendLineColor": "#66fcf1", "fontColor": "#787b86"
-                            });
-                            </script>
-                        </div>
+                        <div id="tradingview_btc" style="height:100%; width:100%;"></div>
                     </div>
                     <div class="chart-block">
-                        <div class="tradingview-widget-container" style="height:100%; width:100%;">
-                            <div id="tradingview_mgc" style="height:100%; width:100%;"></div>
-                            <script type="text/javascript" src="https://tradingview.com"></script>
-                            <script type="text/javascript">
-                            new TradingView.MediumWidget({
-                                "symbols": [["Micro Gold Futures", "COMEX:MGC1!|1D"]],
+                        <div id="tradingview_mgc" style="height:100%; width:100%;"></div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
 
+    <!-- 🧠 ALL LOGIC CODE BUILT-IN SO CACHE CANNOT BREAK IT -->
+    <script type="text/javascript">
+        let currentUserRole = "GUEST";
+        const activePipelines = { trade: false, code: false };
+        let consoleLogsInterval = null;
+
+        // CHANGE THIS STRING TO WHATEVER PRIVATE PASSWORD YOU WANT TO USE FOR YOURSELF:
+        const ADMIN_CORE_SECRET = "CornyStudioSecureCore2026"; 
+
+        function processLoginSequence() {
+            const inputField = document.getElementById("pass-input");
+            const inputVal = inputField.value.trim();
+            
+            const badge = document.getElementById("role-badge");
+            const status = document.getElementById("status-indicator");
+            
+            if (inputVal.toLowerCase() === "guest") {
+                currentUserRole = "GUEST";
+                badge.innerText = "ROLE: DEFAULT_GUEST";
+                badge.style.color = "#85929E";
+                status.innerText = "● GUEST SANDBOX ACTIVE";
+                status.style.color = "#f59e0b";
+                
+                document.getElementById("code-btn").classList.add("btn-disabled");
+                document.getElementById("code-widget-desc").innerText = "• Requires higher workspace clearance.";
+                
+                initializeDashboardLayout();
+                logToTerminal("sys", "Handshake authorized under guest profile. Advanced administrative logic is masked.");
+                
