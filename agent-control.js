@@ -5,7 +5,7 @@ let consoleLogsInterval = null;
 let chartsDrawn = false;
 
 // Set your own private key here. This file is public, so the gate is cosmetic only.
-const ADMIN_CORE_SECRET = "CHANGE_ME";
+const ADMIN_CORE_SECRET = "Curt0708!1010";
 
 function processLoginSequence() {
     const inputField = document.getElementById("pass-input");
