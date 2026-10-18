@@ -2,40 +2,65 @@
    1) animated wallpaper  2) real GitHub activity feed  3) honest studio-session row
    4) real GitHub activity  5) Roblox group count (via relay, optional) */
 
-// Set after you deploy relay-worker.js, e.g. "https://corny-relay.yourname.workers.dev". Empty = skip.
-const RELAY_URL = "";
-const GITHUB_USER = "corny-studio";
-// Your Roblox group ID (public, safe to keep here). Digits only, e.g. "1234567".
-const ROBLOX_GROUP_ID = "187537803";
+// Settings live in config.js
+const CFG = window.CORNY_CONFIG || {};
+const RELAY_URL = CFG.relayUrl || "";
+const GITHUB_USER = CFG.githubUser || "corny-studio";
+const ROBLOX_GROUP_ID = CFG.robloxGroupId || "";
 
-/* ---------- 1. Wallpaper ---------- */
+/* ---------- 1. Wallpaper (stars with scroll parallax) ---------- */
 (function () {
   const c = document.getElementById("wallpaper-canvas");
   if (!c) return;
   const ctx = c.getContext("2d");
   let w, h, pts;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const wrap = function (v, m) { return ((v % m) + m) % m; };
+
   function resize() {
     w = c.width = window.innerWidth; h = c.height = window.innerHeight;
-    const n = Math.min(70, Math.floor((w * h) / 22000));
-    pts = Array.from({ length: n }, () => ({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25 }));
+    const n = Math.min(90, Math.floor((w * h) / 18000));
+    // z = depth: near stars (z close to 1) are bigger, brighter and move more when you scroll
+    pts = Array.from({ length: n }, function () {
+      return { x: Math.random() * w, y: Math.random() * h, z: 0.25 + Math.random() * 0.75,
+               vx: (Math.random() - 0.5) * 0.2, vy: (Math.random() - 0.5) * 0.2 };
+    });
   }
-  function frame() {
+
+  function draw() {
     ctx.clearRect(0, 0, w, h);
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i];
-      if (!reduce) { p.x += p.vx; p.y += p.vy; }
-      if (p.x < 0 || p.x > w) p.vx *= -1;
-      if (p.y < 0 || p.y > h) p.vy *= -1;
-      ctx.fillStyle = "rgba(0,240,255,0.55)"; ctx.fillRect(p.x, p.y, 2, 2);
-      for (let j = i + 1; j < pts.length; j++) {
-        const q = pts[j], d = Math.hypot(p.x - q.x, p.y - q.y);
-        if (d < 140) { ctx.strokeStyle = "rgba(0,240,255," + (0.12 * (1 - d / 140)) + ")"; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
+    const sy = window.scrollY;
+    const pos = pts.map(function (p) {
+      return { x: p.x, y: wrap(p.y - sy * p.z * 0.45, h), z: p.z };
+    });
+    for (let i = 0; i < pos.length; i++) {
+      const p = pos[i];
+      ctx.fillStyle = "rgba(0,240,255," + (0.25 + p.z * 0.55) + ")";
+      const sz = 1 + p.z * 1.8;
+      ctx.fillRect(p.x, p.y, sz, sz);
+      for (let j = i + 1; j < pos.length; j++) {
+        const q = pos[j], d = Math.hypot(p.x - q.x, p.y - q.y);
+        if (d < 130) {
+          ctx.strokeStyle = "rgba(0,240,255," + (0.1 * (1 - d / 130)) + ")";
+          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+        }
       }
     }
-    if (!reduce) requestAnimationFrame(frame);
   }
-  window.addEventListener("resize", resize); resize(); frame();
+
+  function frame() {
+    pts.forEach(function (p) {
+      p.x = wrap(p.x + p.vx, w);
+      p.y = wrap(p.y + p.vy, h);
+    });
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  window.addEventListener("resize", function () { resize(); draw(); });
+  resize();
+  if (reduce) { draw(); window.addEventListener("scroll", draw, { passive: true }); }
+  else frame();
 })();
 
 /* ---------- 2. Recent public GitHub activity (real events) ---------- */
@@ -107,33 +132,4 @@ const ROBLOX_GROUP_ID = "187537803";
     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(j => { if (typeof j.memberCount === "number") cell.textContent = "ONLINE [" + j.memberCount.toLocaleString() + " Members]"; })
     .catch(() => {});
-})();
-
-/* ---------- 6. Studio Market toggle + filters ---------- */
-(function () {
-  const open = document.getElementById("market-toggle-btn");
-  const close = document.getElementById("close-market-btn");
-  const page = document.getElementById("studio-market-page");
-  if (!page) return;
-  function show(v) { page.style.display = v ? "block" : "none"; if (v) page.scrollIntoView({ behavior: "smooth", block: "start" }); }
-  if (open) open.addEventListener("click", function () { show(page.style.display === "none"); });
-  if (close) close.addEventListener("click", function () { show(false); window.scrollTo({ top: 0, behavior: "smooth" }); });
-
-  const btns = page.querySelectorAll(".filter-opt");
-  const cards = page.querySelectorAll("[data-cat]");
-  const empty = document.getElementById("market-empty");
-  btns.forEach(function (b) {
-    b.addEventListener("click", function () {
-      const f = b.getAttribute("data-filter");
-      btns.forEach(function (x) {
-        const on = x === b;
-        x.style.background = on ? "var(--accent-cyan)" : "var(--bg-card)";
-        x.style.color = on ? "#000" : "var(--text-main)";
-        x.style.border = on ? "none" : "1px solid var(--border-muted)";
-      });
-      let n = 0;
-      cards.forEach(function (c) { const ok = f === "all" || c.getAttribute("data-cat") === f; c.style.display = ok ? "flex" : "none"; if (ok) n++; });
-      if (empty) empty.style.display = n ? "none" : "block";
-    });
-  });
 })();
