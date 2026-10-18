@@ -10,7 +10,6 @@
   --cyan:#19f3ff; --mag:#ff2bd6; --ok:#3dff9a; --warn:#ffc83d;
   --ui:"Segoe UI",system-ui,sans-serif; --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
 }
-@media (prefers-color-scheme: light){ :root{} }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui)}
 body{padding:max(14px,env(safe-area-inset-top)) 14px max(14px,env(safe-area-inset-bottom));min-height:100vh}
@@ -57,7 +56,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--mag);outline-of
   <span id="b-role" class="badge guest">GUEST</span>
   <span id="b-mode" class="badge sim">SIMULATED FEED</span>
   <span class="badge">Roblox Hub</span>
-  <a href="panel.html" style="color:var(--dim);font:12px var(--mono);margin-left:auto">back to console</a>
+  <span style="margin-left:auto;display:flex;gap:14px"><a href="panel.html" style="color:var(--dim);font:12px var(--mono)">back to console</a><a href="panel.html" onclick="try{sessionStorage.removeItem('corny_role');sessionStorage.removeItem('corny_key')}catch(e){}" style="color:var(--dim);font:12px var(--mono)">switch role</a></span>
 </header>
 
 <section class="grid" aria-label="Live metrics">
