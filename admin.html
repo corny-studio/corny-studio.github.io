@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Corny Studio // Access Control Core</title>
     
-    <!-- FIX: Updated, official, CORB-safe TradingView script link -->
-    <script type="text/javascript" src="https://tradingview.com"></script>
+    <!-- ✅ FIX: CORB-Safe, Official TradingView widget loader script -->
+    <script type="text/javascript" src="https://tradingview.com" charset="utf-8" onerror="console.log('TradingView script blocked by extension')"></script>
 
     <script type="text/javascript">
         let currentUserRole = "GUEST";
@@ -60,9 +60,9 @@
         }
 
         function renderTradingViewCharts() {
-            // Safe initialization wrapper to prevent blocking your layout if CORB triggers
+            // ✅ ISOLATION WRAPPER: Prevents network blocks from stalling your dashboard interface
             try {
-                if (typeof TradingView !== 'undefined') {
+                if (typeof TradingView !== 'undefined' && TradingView.MediumWidget) {
                     new TradingView.MediumWidget({
                         "container_id": "tradingview_btc",
                         "symbols": [["Bitcoin / US Dollar", "BINANCE:BTCUSDT|1D"]],
@@ -75,10 +75,10 @@
                         "chartOnly": false, "width": "100%", "height": "100%", "locale": "en", "colorTheme": "dark", "autosize": true, "showVolume": false, "hideDateProperties": false, "hideMarketStatus": false, "hideSymbolLogo": false, "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif", "underlineColor": "rgba(102, 252, 241, 0.15)", "gridLineColor": "rgba(42, 46, 57, 0.3)", "trendLineColor": "#f59e0b", "fontColor": "#787b86"
                     });
                 } else {
-                    console.log("TradingView script failed to load. Running terminal telemetry standalone.");
+                    logToTerminal("sys", "TradingView script unreachable. Launching terminal interface standalone.");
                 }
             } catch (e) {
-                console.log("Chart render bypassed:", e);
+                console.log("Chart loading bypassed:", e);
             }
         }
 
@@ -183,4 +183,3 @@
         #auth-btn:hover { background: #45f3ff; box-shadow: 0 0 10px #45f3ff; }
         
         /* Master Dashboard Framework */
-        #dashboard-core { display: none; width: 94%; max-width: 1400px; height: 90vh; grid-template-rows: auto 1fr; gap: 20px; }
