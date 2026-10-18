@@ -15,6 +15,9 @@
         #auth-gate h2 { margin-bottom: 15px; font-size: 1.2rem; letter-spacing: 1px; color: #c5a5c5; }
         #auth-gate p { font-size: 0.75rem; color: #85929E; margin-bottom: 20px; line-height: 1.4; }
         #pass-input { background: #0b0c10; border: 1px solid #66fcf1; color: #fff; padding: 12px; font-size: 0.95rem; width: 100%; text-align: center; margin-bottom: 15px; border-radius: 4px; outline: none; }
+        #gate-error { color: #ff5c7a; font-size: 0.75rem; min-height: 1.2em; margin-bottom: 12px; }
+        .home-link { color: #85929E; text-decoration: none; }
+        .home-link:hover { color: #66fcf1; }
         #auth-btn { background: #66fcf1; border: none; color: #0b0c10; padding: 12px; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; width: 100%; letter-spacing: 1px; }
         #auth-btn:hover { background: #45f3ff; box-shadow: 0 0 10px #45f3ff; }
 
@@ -70,6 +73,7 @@
         <h2>CORNY//STUDIO CORE</h2>
         <p>Enter your access key. Type <b>guest</b> for the read-only sandbox view.</p>
         <input id="pass-input" type="password" placeholder="access key" autocomplete="off">
+        <p id="gate-error" role="alert"></p>
         <button id="auth-btn" type="button">Authenticate</button>
     </div>
 
@@ -77,8 +81,10 @@
         <div class="panel-header">
             <h1>CORNY<span>//</span>STUDIO CONTROL</h1>
             <div class="header-right">
+                <a class="home-link" href="index.html">← site</a>
                 <span id="role-badge">ROLE: DEFAULT_GUEST</span>
                 <span id="status-indicator">● STANDBY</span>
+                <button id="logout-btn" class="pipe-btn" style="width:auto;padding:3px 12px" type="button" onclick="logoutToGate()">Switch role</button>
             </div>
         </div>
 
@@ -116,6 +122,8 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
     <script src="agent-control.js"></script>
 </body>
 </html>
