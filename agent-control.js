@@ -5,7 +5,7 @@ let consoleLogsInterval = null;
 let chartsDrawn = false;
 
 // Set your own private key here. This file is public, so the gate is cosmetic only.
-const ADMIN_CORE_SECRET = "Curt0708!1010";
+const ADMIN_CORE_SECRET = "CHANGE_ME";
 
 function processLoginSequence() {
     const inputField = document.getElementById("pass-input");
@@ -21,6 +21,7 @@ function processLoginSequence() {
         status.style.color = "#f59e0b";
         document.getElementById("code-btn").classList.add("btn-disabled");
         document.getElementById("code-widget-desc").innerText = "• Requires higher workspace clearance.";
+        sessionStorage.setItem("corny_role", "guest");
         initializeDashboardLayout();
         logToTerminal("sys", "Handshake authorized under guest profile. Advanced administrative logic is masked.");
     } else if (ADMIN_CORE_SECRET !== "CHANGE_ME" && inputVal === ADMIN_CORE_SECRET) {
@@ -29,12 +30,29 @@ function processLoginSequence() {
         badge.style.color = "#c5a5c5";
         status.innerText = "● LOCAL EMULATOR SAFE";
         status.style.color = "#66fcf1";
+        sessionStorage.setItem("corny_role", "admin");
         initializeDashboardLayout();
         logToTerminal("sys", "Secure admin key signature verified. Full core authorization unlocked.");
     } else {
         alert("ACCESS REDIRECT: Invalid credential string pattern.");
         inputField.value = "";
     }
+}
+
+function restoreRole(role) {
+    currentUserRole = role.toUpperCase();
+    const badge = document.getElementById("role-badge"), status = document.getElementById("status-indicator");
+    if (role === "admin") {
+        badge.innerText = "ROLE: MASTER_ADMIN"; badge.style.color = "#c5a5c5";
+        status.innerText = "● LOCAL EMULATOR SAFE"; status.style.color = "#66fcf1";
+    } else {
+        badge.innerText = "ROLE: DEFAULT_GUEST"; badge.style.color = "#85929E";
+        status.innerText = "● GUEST SANDBOX ACTIVE"; status.style.color = "#f59e0b";
+        document.getElementById("code-btn").classList.add("btn-disabled");
+        document.getElementById("code-widget-desc").innerText = "• Requires higher workspace clearance.";
+    }
+    initializeDashboardLayout();
+    logToTerminal("sys", "Session restored as " + currentUserRole + ".");
 }
 
 function initializeDashboardLayout() {
@@ -142,4 +160,6 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("agent-control loaded", !!b, !!i);
     if (b) b.addEventListener("click", processLoginSequence);
     if (i) i.addEventListener("keydown", function (e) { if (e.key === "Enter") processLoginSequence(); });
+    const saved = sessionStorage.getItem("corny_role");
+    if (saved === "admin" || saved === "guest") restoreRole(saved);
 });
