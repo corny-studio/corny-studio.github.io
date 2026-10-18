@@ -5,121 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Corny Studio // Access Control Core</title>
 
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
-        body { background-color: #0b0c10; color: #66fcf1; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; padding: 20px; }
-        
-        #auth-gate { text-align: center; border: 1px solid #1f2833; padding: 40px; background: #151a21; border-radius: 4px; box-shadow: 0 0 20px rgba(102,252,241,0.1); width: 360px; display: block; }
-        #auth-gate h2 { margin-bottom: 15px; font-size: 1.2rem; letter-spacing: 1px; color: #c5a5c5; }
-        #auth-gate p { font-size: 0.75rem; color: #85929E; margin-bottom: 20px; line-height: 1.4; }
-        #pass-input { background: #0b0c10; border: 1px solid #66fcf1; color: #fff; padding: 12px; font-size: 0.95rem; width: 100%; text-align: center; margin-bottom: 15px; border-radius: 4px; outline: none; }
-        #auth-btn { background: #66fcf1; border: none; color: #0b0c10; padding: 12px; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; width: 100%; letter-spacing: 1px; }
-        #auth-btn:hover { background: #45f3ff; box-shadow: 0 0 10px #45f3ff; }
-        
-        #dashboard-core { display: none; width: 100%; max-width: 1400px; height: 90vh; grid-template-rows: auto 1fr; gap: 20px; }
-        .panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1f2833; padding-bottom: 12px; }
-        .panel-header h1 { font-size: 1.1rem; color: #fff; letter-spacing: 1px; }
-        #role-badge { background: #1f2833; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
-        
-        .panel-grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; height: 100%; min-height: 0; }
-        .controls-pane { background: #151a21; border: 1px solid #1f2833; padding: 20px; border-radius: 4px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-        .widget { border-top: 1px dashed #1f2833; padding-top: 15px; }
-        .widget-title { font-size: 0.8rem; margin-bottom: 10px; color: #c5a5c5; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
-        .btn-system { width: 100%; padding: 12px; background: transparent; border: 1px solid #66fcf1; color: #66fcf1; font-weight: bold; cursor: pointer; border-radius: 4px; margin-bottom: 8px; text-align: left; font-size: 0.8rem; }
-        .btn-system:hover { background: rgba(102, 252, 241, 0.06); }
-        .btn-system.active { background: #ef4444; color: #fff; border-color: #ef4444; }
-        .btn-disabled { border-color: #334155 !important; color: #475569 !important; cursor: not-allowed !important; }
-        
-        .display-column { display: grid; grid-template-rows: 1fr 280px; gap: 20px; height: 100%; min-height: 0; }
-        .terminal-pane { background: #05070a; border: 1px solid #1f2833; border-radius: 4px; display: grid; grid-template-rows: 1fr auto; min-height: 0; }
-        .terminal-output { padding: 20px; overflow-y: auto; font-size: 0.85rem; line-height: 1.6; color: #a9b7c6; display: flex; flex-direction: column; gap: 6px; }
-        .terminal-line .stamp { color: #4b5563; margin-right: 8px; }
-        .terminal-line.sys { color: #66fcf1; }
-        .terminal-line.trade { color: #f59e0b; }
-        .terminal-line.code { color: #a855f7; }
-        
-        .terminal-input-row { display: grid; grid-template-columns: auto 1fr; align-items: center; background: #0b0c10; border-top: 1px solid #1f2833; padding: 12px 20px; }
-        .prompt-symbol { color: #66fcf1; margin-right: 12px; font-weight: bold; }
-        .terminal-input { background: transparent; border: none; outline: none; color: #fff; width: 100%; font-size: 0.85rem; }
-        
-        .market-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .chart-block { background: #05070a; border: 1px solid #1f2833; border-radius: 4px; overflow: hidden; color: #4b5563; display: flex; justify-content: center; align-items: center; font-size: 0.8rem; }
-    </style>
-</head>
-<body>
-
-    <!-- 🔑 Interactive Login Box -->
-    <div id="auth-gate">
-        <h2>PLATFORM MATRIX GATEWAY</h2>
-        <p>Type "guest" for public view, or enter custom authentication key for administrative core clearance.</p>
-        <input type="password" id="pass-input" placeholder="ENTER ACCESS CODE" autocomplete="off">
-        <button id="auth-btn" onclick="processLoginSequence()">Verify Credentials</button>
-    </div>
-
-    <!-- 💻 Hidden Command Center Workspace Dashboard -->
-    <div id="dashboard-core">
-        <div class="panel-header">
-            <h1>CORNY_STUDIO://AUTONOMOUS_CONTROL_CENTRAL</h1>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <span id="role-badge">CLEARANCE: UNKNOWN</span>
-                <span id="status-indicator" style="color: #ef4444; font-weight: bold; font-size: 0.85rem;">● OFFLINE</span>
-            </div>
-        </div>
-        
-        <div class="panel-grid">
-            <!-- Sidebar Panel -->
-            <div class="controls-pane">
-                <div class="widget" style="border-top: none; padding-top: 0;">
-                    <div class="widget-title">Console Utilities</div>
-                    <button class="btn-system" onclick="clearConsoleLog()">⚡ Flush Console View</button>
-                </div>
-
-                <div class="widget">
-                    <div class="widget-title">📈 Algorithmic Trading Bots</div>
-                    <button id="trade-btn" class="btn-system" onclick="togglePipeline('trade', 'Trading Bot')">▶ Launch Quantitative Scalper</button>
-                    <div style="font-size: 0.75rem; color: #6b7280; padding-left: 2px;">• Targets: MGC Futures / BTC Crypto</div>
-                </div>
-
-                <div class="widget">
-                    <div class="widget-title">💻 Autonomous Coding Agents</div>
-                    <button id="code-btn" class="btn-system" onclick="togglePipeline('code', 'Coding Agent')">▶ Launch Claude Engine</button>
-                    <div id="code-widget-desc" style="font-size: 0.75rem; color: #6b7280; padding-left: 2px;">• Tasks: Repository Code Audits</div>
-                </div>
-
-                <div class="widget">
-                    <div class="widget-title">🔒 System Configuration</div>
-                    <div style="font-size: 0.75rem; color: #85929E; line-height: 1.4;">
-                        • Cluster Node: GitHub Pages<br>
-                        • Script Module: Integrated Grid Matrix<br>
-                        • Engine Handshake: Verified
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Terminal & Charts Grid Display Layout Area -->
-            <div class="display-column">
-                <div class="terminal-pane">
-                    <div class="terminal-output" id="console-stream"></div>
-                    <div class="terminal-input-row">
-                        <span class="prompt-symbol">&gt;</span>
-                        <input type="text" class="terminal-input" id="console-cmd" placeholder="Send manual instruction override to agent loop..." onkeypress="handleCommand(event)">
-                    </div>
-                </div>
-                
-                <div class="market-grid">
-                    <div class="chart-block" id="tradingview_btc">[BITCOIN LIVE TELEMETRY STREAM]</div>
-                    <div class="chart-block" id="tradingview_mgc">[MICRO GOLD LIVE FUTURES TELEMETRY STREAM]</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 🧠 ALL LOCAL INTERFACE LOGIC ENGINES -->
+    <!-- 🧠 ALL LOGIC CODE PRE-LOADS FIRST IN THE HEAD TAG -->
     <script type="text/javascript">
         let currentUserRole = "GUEST";
         const activePipelines = { trade: false, code: false };
         let consoleLogsInterval = null;
 
+        // MASTER PASSWORD STRING CONFIGURATION
         const ADMIN_CORE_SECRET = "CornyStudioSecureCore2026"; 
 
         function processLoginSequence() {
@@ -159,3 +51,135 @@
 
         function initializeDashboardLayout() {
             document.getElementById("auth-gate").style.display = "none";
+            document.getElementById("dashboard-core").style.display = "grid";
+            
+            // Inject and draw charts asynchronously AFTER login to protect layout from blocking bugs
+            injectTradingViewAssets();
+        }
+
+        function injectTradingViewAssets() {
+            let tvScript = document.createElement('script');
+            tvScript.type = 'text/javascript';
+            tvScript.src = 'https://tradingview.com';
+            tvScript.onload = function() {
+                try {
+                    if (typeof TradingView !== 'undefined') {
+                        new TradingView.MediumWidget({
+                            "container_id": "tradingview_btc",
+                            "symbols": [["Bitcoin / US Dollar", "BINANCE:BTCUSDT|1D"]],
+                            "chartOnly": false, "width": "100%", "height": "100%", "locale": "en", "colorTheme": "dark", "autosize": true, "showVolume": false, "hideDateProperties": false, "hideMarketStatus": false, "hideSymbolLogo": false, "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif", "underlineColor": "rgba(102, 252, 241, 0.15)", "gridLineColor": "rgba(42, 46, 57, 0.3)", "trendLineColor": "#66fcf1", "fontColor": "#787b86"
+                        });
+
+                        new TradingView.MediumWidget({
+                            "container_id": "tradingview_mgc",
+                            "symbols": [["Micro Gold Futures", "COMEX:MGC1!|1D"]],
+                            "chartOnly": false, "width": "100%", "height": "100%", "locale": "en", "colorTheme": "dark", "autosize": true, "showVolume": false, "hideDateProperties": false, "hideMarketStatus": false, "hideSymbolLogo": false, "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif", "underlineColor": "rgba(102, 252, 241, 0.15)", "gridLineColor": "rgba(42, 46, 57, 0.3)", "trendLineColor": "#f59e0b", "fontColor": "#787b86"
+                        });
+                    }
+                } catch (err) {
+                    console.log("Chart rendering failed:", err);
+                }
+            };
+            document.body.appendChild(tvScript);
+        }
+
+        function togglePipeline(id, name) {
+            if (currentUserRole === "GUEST" && id === "code") {
+                logToTerminal("sys", "ACCESS EXCEPTION: Guest profile is unauthorized to call external language model loops.");
+                return;
+            }
+            
+            const btn = document.getElementById(`${id}-btn`);
+            activePipelines[id] = !activePipelines[id];
+            
+            if (activePipelines[id]) {
+                btn.innerText = `■ Terminate ${name}`;
+                btn.classList.add("active");
+                logToTerminal("sys", `Spinning up processing matrix for: ${name}...`);
+                
+                if (id === "trade") triggerTelemetryStream(true);
+                if (id === "code") logToTerminal("code", "Claude Engine online. Crawling local staging directories for security verification checks...");
+            } else {
+                btn.innerText = `▶ Launch ${name}`;
+                btn.classList.remove("active");
+                logToTerminal("sys", `Pipeline thread forced down to rest: ${name}`);
+                
+                if (id === "trade") triggerTelemetryStream(false);
+            }
+        }
+
+        function triggerTelemetryStream(start) {
+            if (!start) {
+                clearInterval(consoleLogsInterval);
+                logToTerminal("trade", "Quantitative dashboard stream detached.");
+                return;
+            }
+            
+            const guestPhrases = [
+                "[SANDBOX] Simulating market ticker data capture... Values read-only.",
+                "[SANDBOX] Parsing fake market volatility matrix... No real accounts linked.",
+                "[SANDBOX] Heartbeat stable. Chart telemetry running smoothly."
+            ];
+            
+            const adminPhrases = [
+                "[LIVE_CORE] Telemetry check: BINANCE:BTCUSDT data streams fully active.",
+                "[LIVE_CORE] Telemetry check: COMEX:MGC1! futures connection operating normally.",
+                "[LIVE_CORE] Port evaluation clear. Ready for programmatic overrides."
+            ];
+            
+            const logPool = (currentUserRole === "ADMIN") ? adminPhrases : guestPhrases;
+            
+            consoleLogsInterval = setInterval(() => {
+                if (activePipelines.trade) {
+                    const randomMsg = logPool[Math.floor(Math.random() * logPool.length)];
+                    logToTerminal("trade", randomMsg);
+                }
+            }, 5000);
+        }
+
+        function logToTerminal(type, text) {
+            const stream = document.getElementById("console-stream");
+            if (!stream) return;
+            
+            const line = document.createElement("div");
+            const time = new Date().toTimeString().split(' ');
+            
+            line.className = `terminal-line ${type}`;
+            line.innerHTML = `<span class="stamp">[${time}]</span>${type.toUpperCase()}: ${text}`;
+            stream.appendChild(line);
+            stream.scrollTop = stream.scrollHeight;
+        }
+
+        function clearConsoleLog() {
+            document.getElementById("console-stream").innerHTML = "";
+            logToTerminal("sys", "Terminal view cache wiped clean.");
+        }
+
+        function handleCommand(e) {
+            if (e.key === "Enter") {
+                const input = document.getElementById("console-cmd");
+                const val = input.value.trim();
+                if (!val) return;
+                
+                if (currentUserRole === "GUEST") {
+                    logToTerminal("sys", `GUEST INTERCEPT: Command payload ignored. Guests lack manual pipeline execution rights.`);
+                } else {
+                    logToTerminal("sys", `Admin execution command pushed to stream: "${val}"`);
+                }
+                input.value = "";
+            }
+        }
+    </script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
+        body { background-color: #0b0c10; color: #66fcf1; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; padding: 20px; }
+        
+        #auth-gate { text-align: center; border: 1px solid #1f2833; padding: 40px; background: #151a21; border-radius: 4px; box-shadow: 0 0 20px rgba(102,252,241,0.1); width: 360px; display: block; }
+        #auth-gate h2 { margin-bottom: 15px; font-size: 1.2rem; letter-spacing: 1px; color: #c5a5c5; }
+        #auth-gate p { font-size: 0.75rem; color: #85929E; margin-bottom: 20px; line-height: 1.4; }
+        #pass-input { background: #0b0c10; border: 1px solid #66fcf1; color: #fff; padding: 12px; font-size: 0.95rem; width: 100%; text-align: center; margin-bottom: 15px; border-radius: 4px; outline: none; }
+        #auth-btn { background: #66fcf1; border: none; color: #0b0c10; padding: 12px; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; width: 100%; letter-spacing: 1px; }
+        #auth-btn:hover { background: #45f3ff; box-shadow: 0 0 10px #45f3ff; }
+        
+        #dashboard-core { display: none; width: 100%; max-width: 1400px; height: 90vh; grid-template-rows: auto 1fr; gap: 20px; }
