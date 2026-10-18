@@ -8,13 +8,13 @@
     <!-- Load TradingView Script Library Early -->
     <script type="text/javascript" src="https://tradingview.com"></script>
 
-    <!-- 🧠 ALL LOGIC CODE AT THE TOP SO IT PRE-LOADS FIRST -->
+    <!-- 🧠 PRE-LOAD AUTOMATION LOGIC AT THE TOP -->
     <script type="text/javascript">
         let currentUserRole = "GUEST";
         const activePipelines = { trade: false, code: false };
         let consoleLogsInterval = null;
 
-        // CHANGE THIS STRING TO WHATEVER PRIVATE PASSWORD YOU WANT TO USE FOR YOURSELF:
+        // CHANGE THIS STRING TO YOUR PRIVATE PASSWORD:
         const ADMIN_CORE_SECRET = "CornyStudioSecureCore2026"; 
 
         function processLoginSequence() {
@@ -182,4 +182,3 @@
         .panel-header h1 { font-size: 1.1rem; color: #fff; letter-spacing: 1px; }
         #role-badge { background: #1f2833; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
         
-
