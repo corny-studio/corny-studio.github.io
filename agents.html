@@ -2,107 +2,197 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Roblox Agents | CORNY//STUDIO</title>
     <style>
         :root {
-            --bg: #07090d; --panel: #0d1218; --line: #1c2733; --text: #cfe6f2; --dim: #6f8496;
+            --bg: #06080c; --panel: #0b1017; --side: #080c11; --raised: #0f1620; --line: #1a2531; --line2: #243241;
+            --text: #d3e6f2; --dim: #6d8294; --faint: #44566a;
             --cyan: #19f3ff; --mag: #c5a5c5; --ok: #39ff14; --warn: #f5b83d; --bad: #ff5c7a;
-            --mono: "Courier New", Courier, monospace;
+            --s-idea: #8aa4c8; --s-building: #f5b83d; --s-testing: #b58cff; --s-ready: #39ff14; --s-published: #19f3ff;
+            --mono: "Cascadia Mono", "SFMono-Regular", Consolas, "Courier New", monospace;
+            --ui: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         [hidden] { display: none !important; }
-        html, body { background: var(--bg); color: var(--text); font-family: var(--mono); min-height: 100vh; }
-        body { padding: 16px; }
+        html, body { height: 100%; }
+        body {
+            background: var(--bg); color: var(--text); font-family: var(--ui);
+            background-image: radial-gradient(900px 500px at 8% -10%, rgba(25,243,255,0.07), transparent 60%),
+                              radial-gradient(800px 500px at 100% 110%, rgba(197,165,199,0.07), transparent 60%);
+            background-attachment: fixed;
+            display: flex; flex-direction: column; gap: 10px;
+            padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom));
+        }
+        ::-webkit-scrollbar { width: 9px; height: 9px; }
+        ::-webkit-scrollbar-thumb { background: #1d2a38; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2a3b4e; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
-        header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 16px; border-bottom: 2px solid var(--line); padding-bottom: 12px; }
-        h1 { font-size: 1.05rem; letter-spacing: 2px; color: var(--cyan); }
+        /* ---------- top bar ---------- */
+        header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 2px 2px 8px; }
+        h1 { font: 700 0.95rem var(--mono); letter-spacing: 2.5px; color: var(--cyan); text-shadow: 0 0 14px rgba(25,243,255,0.4); }
         h1 span { color: var(--mag); }
-        .head-links { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 0.78rem; }
+        .head-links { margin-left: auto; display: flex; align-items: center; gap: 14px; font: 0.76rem var(--mono); }
         .head-links a { color: var(--dim); text-decoration: none; }
         .head-links a:hover { color: var(--cyan); }
 
-        #locked { max-width: 420px; margin: 12vh auto 0; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 2rem; }
-        #locked h2 { color: var(--mag); font-size: 1rem; margin-bottom: 0.75rem; }
-        #locked p { color: var(--dim); font-size: 0.8rem; line-height: 1.5; }
+        /* ---------- HUD ---------- */
+        #hud { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+        .chip { flex: none; display: flex; align-items: baseline; gap: 8px; background: linear-gradient(180deg, var(--raised), var(--panel)); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; color: var(--text); font: inherit; cursor: pointer; text-align: left; transition: border-color .15s, transform .15s; }
+        .chip:hover { border-color: var(--cyan); transform: translateY(-1px); }
+        .chip .k { font: 0.62rem var(--mono); letter-spacing: 1.2px; text-transform: uppercase; color: var(--dim); }
+        .chip .v { font: 700 1rem var(--mono); color: var(--text); }
+        .chip.s-idea .v { color: var(--s-idea); } .chip.s-building .v { color: var(--s-building); }
+        .chip.s-testing .v { color: var(--s-testing); } .chip.s-ready .v { color: var(--s-ready); }
+        .chip.s-published .v { color: var(--s-published); }
+        .chip.good .v { color: var(--ok); } .chip.bad .v { color: var(--warn); }
 
-        #app { display: grid; grid-template-columns: 200px 1fr; gap: 16px; align-items: start; }
-        .side { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 6px; }
-        .side h3 { font-size: 0.7rem; letter-spacing: 1.5px; color: var(--dim); margin: 4px 0; }
-        .tab { text-align: left; background: transparent; color: var(--text); border: 1px solid transparent; border-radius: 4px; padding: 9px 10px; font: 0.85rem var(--mono); cursor: pointer; }
-        .tab:hover { border-color: var(--line); }
-        .tab.active { border-color: var(--cyan); color: var(--cyan); background: rgba(25,243,255,0.06); }
-        .counts { margin-top: 10px; font-size: 0.75rem; color: var(--dim); display: grid; gap: 3px; border-top: 1px solid var(--line); padding-top: 10px; }
+        #locked { max-width: 440px; margin: 12vh auto 0; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 2.2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        #locked h2 { color: var(--mag); font: 700 1rem var(--mono); margin-bottom: 0.75rem; }
+        #locked p { color: var(--dim); font-size: 0.85rem; line-height: 1.6; }
 
-        .main { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; min-height: 60vh; min-width: 0; }
-        .main > section { padding: 16px; }
-        .main h2 { font-size: 0.95rem; color: var(--cyan); margin-bottom: 4px; }
-        .sub { font-size: 0.75rem; color: var(--dim); margin-bottom: 14px; line-height: 1.5; }
-        .note { font-size: 0.75rem; color: var(--warn); margin-bottom: 12px; }
+        /* ---------- layout ---------- */
+        #app { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 1fr) 224px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); box-shadow: 0 18px 50px rgba(0,0,0,0.45); position: relative; }
+        .channels, .members { background: var(--side); padding: 12px 8px; overflow-y: auto; }
+        .channels { border-right: 1px solid var(--line); }
+        .members { border-left: 1px solid var(--line); }
+        .server { font: 700 0.78rem var(--mono); letter-spacing: 1.5px; color: var(--text); padding: 4px 8px 12px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+        .label { font: 0.62rem var(--mono); letter-spacing: 1.6px; color: var(--faint); padding: 10px 8px 4px; text-transform: uppercase; }
 
-        button.act { background: transparent; color: var(--cyan); border: 1px solid var(--cyan); border-radius: 4px; padding: 7px 12px; font: bold 0.75rem var(--mono); cursor: pointer; }
-        button.act:hover { background: rgba(25,243,255,0.1); }
-        button.act:disabled { color: var(--dim); border-color: var(--line); cursor: not-allowed; }
-        button.act.solid { background: var(--cyan); color: #000; }
-        button.act.solid:disabled { background: transparent; color: var(--dim); }
-        button.act.danger { color: var(--bad); border-color: #5a2a35; }
-        input, textarea, select { background: var(--bg); border: 1px solid var(--line); color: #fff; border-radius: 4px; padding: 9px; font: 0.82rem var(--mono); outline: none; width: 100%; }
-        input:focus, textarea:focus, select:focus { border-color: var(--cyan); }
-        textarea { resize: vertical; }
+        .ch { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: transparent; border: none; color: var(--dim); border-radius: 6px; padding: 7px 8px; font: 0.88rem var(--ui); cursor: pointer; }
+        .ch .hash { color: var(--faint); font-family: var(--mono); }
+        .ch .nm { flex: 1; }
+        .ch:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+        .ch.active { background: rgba(25,243,255,0.1); color: var(--cyan); box-shadow: inset 2px 0 0 var(--cyan); }
+        .ch.has-unread { color: var(--text); font-weight: 600; }
+        .cdot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+        .cdot.active { background: var(--ok); } .cdot.working { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+        .cdot.offline { background: var(--warn); }
+        .badge { min-width: 18px; text-align: center; background: var(--bad); color: #000; font: 700 0.65rem var(--mono); border-radius: 9px; padding: 1px 5px; }
 
-        /* Team */
-        .agent { display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dim); }
-        .agent.working .dot { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
-        .agent.active .dot { background: var(--ok); }
-        .agent.offline .dot { background: var(--warn); }
-        .agent.planned { border-style: dashed; opacity: 0.6; }
-        .info strong { display: block; font-size: 0.9rem; }
-        .info .role { display: block; font-size: 0.72rem; color: var(--dim); }
-        .info .detail { display: block; font-size: 0.75rem; margin-top: 2px; }
-        .pill { font-size: 0.65rem; letter-spacing: 1px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--line); color: var(--dim); text-transform: uppercase; }
-        .working .pill { color: var(--cyan); border-color: var(--cyan); }
-        .active .pill { color: var(--ok); border-color: var(--ok); }
-        .offline .pill { color: var(--warn); border-color: var(--warn); }
-        .spacer { width: 1px; }
+        .member { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; width: 100%; background: transparent; border: none; color: var(--text); border-radius: 6px; padding: 6px 8px; font: 0.82rem var(--ui); cursor: pointer; text-align: left; }
+        .member:hover { background: rgba(255,255,255,0.04); }
+        .member .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); align-self: center; grid-row: 1 / span 2; }
+        .member .mn { line-height: 1.2; }
+        .member .md { font-size: 0.68rem; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .member.active .dot { background: var(--ok); }
+        .member.working .dot { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+        .member.offline .dot { background: var(--warn); }
+        .member.planned { opacity: 0.45; }
 
-        /* Board */
-        .add-idea { display: grid; gap: 8px; margin-bottom: 14px; }
-        .add-idea .row { display: flex; gap: 8px; flex-wrap: wrap; }
-        #columns { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 6px; }
-        .col { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-height: 160px; }
-        .col h3 { font-size: 0.72rem; letter-spacing: 1px; color: var(--dim); margin-bottom: 8px; text-transform: uppercase; }
-        .bcard { border: 1px solid var(--line); background: var(--panel); border-radius: 5px; padding: 8px; margin-bottom: 8px; }
-        .bcard strong { font-size: 0.82rem; display: block; word-break: break-word; }
-        .bcard p { font-size: 0.72rem; color: var(--dim); margin-top: 4px; word-break: break-word; }
-        .brow { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-        .brow button { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 3px; padding: 3px 8px; font: 0.7rem var(--mono); cursor: pointer; }
-        .brow button:hover { border-color: var(--cyan); color: var(--cyan); }
-        .brow button.danger:hover { border-color: var(--bad); color: var(--bad); }
+        /* ---------- chat ---------- */
+        .chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+        .chat-head { display: flex; align-items: center; gap: 10px 14px; padding: 11px 16px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent); }
+        #chan-title { font: 700 0.95rem var(--ui); }
+        #chan-topic { font-size: 0.74rem; color: var(--dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        #conn { flex: none; font: 0.65rem var(--mono); letter-spacing: 0.5px; border: 1px solid var(--line2); border-radius: 20px; padding: 3px 10px; color: var(--dim); }
+        #conn.on { color: var(--ok); border-color: rgba(57,255,20,0.4); } #conn.off { color: var(--warn); border-color: rgba(245,184,61,0.4); }
+        #members-toggle { display: none; background: transparent; color: var(--cyan); border: 1px solid var(--cyan); border-radius: 6px; padding: 4px 10px; font: 0.72rem var(--mono); cursor: pointer; }
 
-        /* Analyst / Announce / Library */
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 12px 0; }
-        .stat { border: 1px solid var(--line); border-radius: 5px; padding: 9px; background: var(--bg); }
-        .stat b { display: block; font-size: 1.15rem; color: var(--cyan); }
-        .stat small { color: var(--dim); font-size: 0.7rem; }
-        .finding { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 5px; padding: 9px 11px; margin-bottom: 8px; font-size: 0.8rem; }
-        .finding span { flex: 1; line-height: 1.45; }
-        .stack { display: grid; gap: 10px; max-width: 640px; }
-        .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
-        #log-list { max-height: 55vh; overflow-y: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 10px; font-size: 0.78rem; line-height: 1.6; margin-top: 12px; }
-        #log-list .t { color: #4a5866; margin-right: 8px; }
-        #log-list .ag { color: var(--mag); margin-right: 8px; }
-        .empty { color: var(--dim); font-size: 0.8rem; }
+        #messages { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 16px 16px; }
+        .day { display: flex; align-items: center; gap: 12px; margin: 14px 0 6px; font: 0.66rem var(--mono); letter-spacing: 1px; color: var(--faint); text-transform: uppercase; }
+        .day::before, .day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
-        #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--cyan); color: var(--text); padding: 9px 16px; border-radius: 6px; font-size: 0.8rem; z-index: 50; max-width: 90vw; }
+        .msg { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 6px 8px; margin: 0 -8px; border-radius: 8px; animation: pop .18s ease-out; }
+        .msg:hover { background: rgba(255,255,255,0.025); }
+        .msg.compact { padding-top: 1px; padding-bottom: 1px; }
+        .msg.compact .avatar, .msg.compact .meta { display: none; }
+        .msg.compact .body { grid-column: 2; }
+        .avatar { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font: 800 1rem var(--ui); color: #04070a; box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+        .meta { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 2px; }
+        .meta .name { font-weight: 700; font-size: 0.92rem; }
+        .meta .tag { font: 0.58rem var(--mono); letter-spacing: 0.8px; border: 1px solid var(--line2); color: var(--dim); border-radius: 4px; padding: 1px 5px; }
+        .meta .time { font-size: 0.68rem; color: var(--faint); }
+        .mcopy { position: absolute; top: 6px; right: 10px; opacity: 0; background: var(--raised); border: 1px solid var(--line2); color: var(--dim); border-radius: 5px; padding: 1px 8px; font: 0.64rem var(--mono); cursor: pointer; transition: opacity .12s; }
+        .msg:hover .mcopy, .mcopy:focus-visible { opacity: 1; }
+        .mcopy:hover { color: var(--cyan); border-color: var(--cyan); }
+
+        .text { font-size: 0.92rem; line-height: 1.55; word-break: break-word; }
+        .text .p { white-space: pre-wrap; }
+        .text.plain { white-space: pre-wrap; }
+        .text .li { display: flex; gap: 8px; } .text .li::before { content: "•"; color: var(--dim); }
+        .text strong { color: #fff; } .text a { color: var(--cyan); }
+        .text code, .embed code { font: 0.82em var(--mono); background: rgba(255,255,255,0.07); border-radius: 4px; padding: 1px 5px; }
+        .msg.me .text { color: #eaf6fc; }
+        pre.code { margin-top: 6px; background: #05080c; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: 0.76rem/1.55 var(--mono); white-space: pre-wrap; word-break: break-word; max-height: 300px; overflow-y: auto; color: #c9d7e2; }
+
+        .embed { margin-top: 6px; max-width: 700px; border: 1px solid var(--line); border-left: 3px solid var(--cyan); background: rgba(255,255,255,0.025); border-radius: 4px 10px 10px 4px; padding: 10px 12px; }
+        .embed .et { display: block; font-weight: 700; font-size: 0.86rem; margin-bottom: 6px; }
+        .embed .ln { font: 0.78rem/1.6 var(--mono); word-break: break-word; color: #c3d3df; }
+        .embed .ln.gap { height: 6px; }
+        .cards { display: grid; gap: 8px; }
+        .icard { border: 1px solid var(--line); background: var(--raised); border-radius: 8px; padding: 9px 11px; }
+        .icard.gone { opacity: 0.4; }
+        .icard .top { display: flex; align-items: center; gap: 8px; }
+        .icard .n { font: 0.7rem var(--mono); color: var(--faint); }
+        .icard .ti { flex: 1; font-weight: 600; font-size: 0.88rem; word-break: break-word; }
+        .icard .no { font-size: 0.76rem; color: var(--dim); margin-top: 3px; word-break: break-word; }
+        .pill { font: 700 0.6rem var(--mono); letter-spacing: 0.8px; text-transform: uppercase; border: 1px solid currentColor; border-radius: 20px; padding: 2px 8px; }
+        .pill.Idea { color: var(--s-idea); } .pill.Building { color: var(--s-building); } .pill.Testing { color: var(--s-testing); }
+        .pill.Ready { color: var(--s-ready); } .pill.Published { color: var(--s-published); }
+        .icard .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .mini { background: transparent; color: var(--text); border: 1px solid var(--line2); border-radius: 6px; padding: 3px 9px; font: 0.7rem var(--mono); cursor: pointer; }
+        .mini:hover { border-color: var(--cyan); color: var(--cyan); }
+        .mini.danger:hover { border-color: var(--bad); color: var(--bad); }
+
+        .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .btns button { background: transparent; color: var(--cyan); border: 1px solid var(--cyan); border-radius: 6px; padding: 5px 12px; font: 700 0.74rem var(--mono); cursor: pointer; }
+        .btns button:hover:not(:disabled) { background: rgba(25,243,255,0.1); }
+        .btns button.primary { background: var(--cyan); color: #021014; }
+        .btns button.primary:hover:not(:disabled) { background: #5ff7ff; }
+        .btns button:disabled { opacity: 0.4; cursor: default; }
+
+        #jump { position: absolute; right: 22px; bottom: 138px; z-index: 5; background: var(--cyan); color: #021014; border: none; border-radius: 20px; padding: 6px 14px; font: 700 0.72rem var(--mono); cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+
+        /* ---------- composer ---------- */
+        .composer { position: relative; padding: 8px 14px 12px; border-top: 1px solid var(--line); background: linear-gradient(0deg, rgba(255,255,255,0.02), transparent); }
+        #chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 7px; }
+        .qchip { flex: none; background: var(--raised); color: var(--dim); border: 1px solid var(--line2); border-radius: 20px; padding: 3px 11px; font: 0.7rem var(--mono); cursor: pointer; }
+        .qchip:hover { color: var(--cyan); border-color: var(--cyan); }
+        #hint { font: 0.7rem var(--mono); color: var(--dim); padding: 0 2px 5px; min-height: 1.3em; }
+        #hint b { color: var(--cyan); font-weight: 600; }
+        #typing { min-height: 1.1em; font-size: 0.7rem; color: var(--dim); padding: 0 2px 4px; }
+        #typing.on::before { content: ""; display: inline-block; width: 18px; height: 6px; margin-right: 6px; vertical-align: middle; background: radial-gradient(circle, var(--cyan) 2px, transparent 2.5px) 0 50% / 6px 6px repeat-x; animation: dots 1s steps(3) infinite; }
+        .row { display: flex; gap: 8px; align-items: flex-end; }
+        #msg-input { flex: 1; resize: none; background: #05080c; border: 1px solid var(--line2); color: #fff; border-radius: 10px; padding: 11px 13px; font: 0.92rem var(--ui); outline: none; min-height: 46px; max-height: 140px; }
+        #msg-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(25,243,255,0.1); }
+        #send-btn { background: var(--cyan); color: #021014; border: none; border-radius: 10px; padding: 0 20px; height: 46px; font: 700 0.8rem var(--mono); cursor: pointer; }
+        #send-btn:hover { background: #5ff7ff; }
+        .keys { font: 0.62rem var(--mono); color: var(--faint); padding: 6px 2px 0; }
+
+        #slash-pop { position: absolute; left: 14px; right: 14px; bottom: calc(100% - 8px); background: var(--side); border: 1px solid var(--cyan); border-radius: 10px; max-height: 300px; overflow-y: auto; z-index: 20; box-shadow: 0 -12px 40px rgba(0,0,0,0.55); }
+        #slash-pop .opt { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; font-size: 0.8rem; }
+        #slash-pop .opt.sel, #slash-pop .opt:hover { background: rgba(25,243,255,0.1); }
+        #slash-pop .od { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+        #slash-pop .u { font: 0.78rem var(--mono); color: var(--cyan); white-space: nowrap; }
+        #slash-pop .u b { color: #fff; }
+        #slash-pop .d { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        #toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--raised); border: 1px solid var(--cyan); color: var(--text); padding: 9px 18px; border-radius: 10px; font-size: 0.8rem; z-index: 50; max-width: 90vw; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: pop .18s ease-out; }
         #toast.bad { border-color: var(--bad); color: var(--bad); }
 
-        @media (max-width: 800px) {
-            #app { grid-template-columns: 1fr; }
-            .side { grid-template-columns: repeat(3, 1fr); }
-            .side h3, .counts { grid-column: 1 / -1; }
-            .agent { grid-template-columns: auto 1fr; }
-            .agent .pill, .agent button { grid-column: 2; justify-self: start; }
+        @keyframes pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        @keyframes dots { to { background-position: 18px 50%; } }
+        @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+        /* ---------- small screens ---------- */
+        @media (max-width: 900px) {
+            #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+            .channels { display: flex; overflow-x: auto; gap: 4px; padding: 8px; border-right: none; border-bottom: 1px solid var(--line); }
+            .channels .server, .channels .label { display: none; }
+            #channel-list { display: flex; gap: 4px; }
+            .ch { width: auto; white-space: nowrap; padding: 6px 12px; border-radius: 20px; }
+            .ch.active { box-shadow: none; }
+            .members { position: absolute; top: 0; right: 0; bottom: 0; width: min(280px, 82%); z-index: 30; transform: translateX(105%); transition: transform .2s; box-shadow: -20px 0 50px rgba(0,0,0,0.6); }
+            .members.open { transform: none; }
+            #members-toggle { display: inline-block; }
+            #chan-topic { display: none; }
+            .msg { grid-template-columns: 34px minmax(0, 1fr); gap: 10px; }
+            .avatar { width: 34px; height: 34px; border-radius: 10px; }
+            #jump { bottom: 150px; }
+            .keys { display: none; }
         }
     </style>
 </head>
@@ -116,78 +206,45 @@
         </div>
     </header>
 
+    <div id="hud" aria-label="Studio at a glance" hidden></div>
+
     <section id="locked">
         <h2>Master login required</h2>
         <p>The agents area is private. Use <b>Master login</b> in the top right to open it. The board's data is also locked on the server and can't be read without your master key.</p>
     </section>
 
     <div id="app" hidden>
-        <nav class="side" aria-label="Agents sections">
-            <h3>WORKSPACE</h3>
-            <button class="tab active" type="button" data-tab="team">Team</button>
-            <button class="tab" type="button" data-tab="board">Board</button>
-            <button class="tab" type="button" data-tab="analyst">Analyst</button>
-            <button class="tab" type="button" data-tab="announce">Announcer</button>
-            <button class="tab" type="button" data-tab="library">Library</button>
-            <div class="counts">
-                <span id="cnt-working">0 working</span>
-                <span id="cnt-active">0 active</span>
-                <span id="cnt-offline">0 offline</span>
-                <span id="cnt-planned">0 planned</span>
+        <aside class="channels" id="channels" aria-label="Channels">
+            <div class="server">CORNY//STUDIO HQ</div>
+            <div class="label">Channels</div>
+            <div id="channel-list"></div>
+        </aside>
+
+        <main class="chat">
+            <div class="chat-head">
+                <span id="chan-title"># general</span>
+                <span id="chan-topic"></span>
+                <span id="conn" class="off">…</span>
+                <button id="members-toggle" type="button" aria-label="Show agents">Agents</button>
             </div>
-        </nav>
-
-        <div class="main">
-            <section id="tab-team">
-                <h2>Team</h2>
-                <p class="sub">Every status here comes from a real check. Workers run when you press Run. Nothing publishes by itself.</p>
-                <div id="roster"></div>
-            </section>
-
-            <section id="tab-board" hidden>
-                <h2>Board</h2>
-                <p class="sub">Idea → Building → Testing → Ready → Published. Idea agent: add ideas, or copy a brainstorm prompt for your chat. Builder agent: the Prompt button copies a ready-made build prompt.</p>
-                <p id="board-note" class="note"></p>
-                <div class="add-idea">
-                    <input id="idea-title" maxlength="100" placeholder="Idea title (e.g. Daily login rewards)" autocomplete="off">
-                    <textarea id="idea-notes" rows="2" maxlength="800" placeholder="Notes (optional)"></textarea>
-                    <div class="row">
-                        <button id="idea-add" class="act solid" type="button">Add idea</button>
-                        <button id="brainstorm-btn" class="act" type="button">Copy brainstorm prompt</button>
-                    </div>
+            <div id="messages" aria-live="polite"></div>
+            <button id="jump" type="button" hidden>↓ Latest</button>
+            <div class="composer">
+                <div id="slash-pop" role="listbox" hidden></div>
+                <div id="chips" aria-label="Quick commands"></div>
+                <div id="hint"></div>
+                <div id="typing"></div>
+                <div class="row">
+                    <textarea id="msg-input" rows="1" maxlength="1900" placeholder="Message this channel, or type / for commands" autocomplete="off" aria-label="Message"></textarea>
+                    <button id="send-btn" type="button">Send</button>
                 </div>
-                <div id="columns"></div>
-            </section>
+                <div class="keys">Enter send · Shift+Enter new line · / commands · ↑ recall · Alt+↑↓ switch channel</div>
+            </div>
+        </main>
 
-            <section id="tab-analyst" hidden>
-                <h2>Analyst</h2>
-                <p class="sub">Reads your live Roblox events from the relay and flags things worth a look. These are signals from a small sample, not facts.</p>
-                <button id="analyst-run" class="act solid" type="button">Run analysis</button>
-                <div id="analyst-out"></div>
-            </section>
-
-            <section id="tab-announce" hidden>
-                <h2>Announcer</h2>
-                <p class="sub">Drafts a Discord update from a Ready or Published item. Nothing posts until you press Accept.</p>
-                <p id="ann-note" class="note"></p>
-                <div class="stack">
-                    <select id="ann-item" aria-label="Item to announce"></select>
-                    <button id="ann-draft" class="act" type="button">Draft from item</button>
-                    <textarea id="ann-text" rows="7" maxlength="1800" placeholder="Pick an item and draft, or write your own"></textarea>
-                    <div class="btn-row">
-                        <button id="ann-post" class="act solid" type="button">Accept and post to Discord</button>
-                        <button id="ann-copy" class="act" type="button">Copy text</button>
-                    </div>
-                </div>
-            </section>
-
-            <section id="tab-library" hidden>
-                <h2>Library</h2>
-                <p class="sub">The log of everything the agents and you did, newest first.</p>
-                <button id="changelog-copy" class="act" type="button">Copy changelog (Published items)</button>
-                <div id="log-list" aria-live="polite"></div>
-            </section>
-        </div>
+        <aside class="members" id="members" aria-label="Agents">
+            <div id="member-list"></div>
+        </aside>
     </div>
 
     <div id="toast" role="status" hidden></div>
