@@ -41,6 +41,9 @@
         .links-hub { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
         .hub-btn { display: inline-flex; align-items: center; gap: 0.6rem; background-color: var(--bg-card); border: 1px solid var(--border-muted); color: var(--text-bright); padding: 0.65rem 1.25rem; border-radius: 6px; font-family: monospace; font-size: 0.85rem; text-decoration: none; transition: all 0.2s ease; }
         .hub-btn:hover { border-color: var(--accent-cyan); box-shadow: 0 0 12px rgba(0,240,255,0.15); color: var(--accent-cyan); transform: translateY(-2px); }
+        nav { display: flex; align-items: center; gap: 0.75rem; }
+        .hub-btn.small { padding: 0.5rem 1rem; font-size: 0.8rem; }
+        .hub-btn svg { width: 14px; height: 14px; color: var(--accent-cyan); }
         .hub-btn.discord-main { border-color: rgba(114,137,218,0.4); }
         .hub-btn.discord-main:hover { border-color: #7289da; box-shadow: 0 0 12px rgba(114,137,218,0.25); color: #7289da; }
 
@@ -68,7 +71,6 @@
         .status-idle { color: var(--text-main); }
         .status-online { color: var(--accent-green); font-weight: bold; }
         .status-active { color: var(--accent-cyan); font-weight: bold; }
-        .status-checking { color: #e3b341; font-weight: bold; }
 
         @media (max-width: 640px) { h1 { font-size: 2.2rem; } main { padding: 0 1rem; } }
     </style>
@@ -91,12 +93,13 @@
                 </svg>
                 <span>CORNY//GAMES</span>
             </div>
-            <div>
-                <button id="market-toggle-btn" class="hub-btn" type="button" style="cursor: pointer; padding: 0.5rem 1rem; font-size: 0.8rem;">
-                    <i data-lucide="shopping-bag" style="width: 14px; height: 14px; color: var(--accent-cyan);"></i>
+            <nav>
+                <a class="hub-btn small" href="market.html">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                     Studio Market
-                </button>
-            </div>
+                </a>
+                <span id="auth-slot"></span>
+            </nav>
         </div>
     </header>
 
@@ -163,63 +166,16 @@
             </div>
         </section>
 
-        <section id="studio-market-page" style="display: none; border-top: 1px solid var(--border-muted); padding-top: 3rem; margin-bottom: 5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2.5rem;">
-                <h2 style="margin: 0; font-family: monospace;">// CORNY_STUDIO_MARKET</h2>
-                <button id="close-market-btn" type="button" style="background: transparent; border: 1px solid var(--border-muted); color: var(--text-bright); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-family: monospace; font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Return Home
-                </button>
-            </div>
-
-            <div style="display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap; font-family: monospace; font-size: 0.8rem;">
-                <button class="filter-opt" data-filter="all" type="button" style="background: var(--accent-cyan); color: #000; border: none; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; cursor: pointer;">All Assets (1)</button>
-                <button class="filter-opt" data-filter="frameworks" type="button" style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-muted); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Frameworks</button>
-                <button class="filter-opt" data-filter="scripts" type="button" style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-muted); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Scripts</button>
-                <button class="filter-opt" data-filter="automation" type="button" style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-muted); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Automation</button>
-            </div>
-            <p id="market-empty" style="display: none; font-family: monospace; color: var(--text-main);">Nothing in this category yet.</p>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem;">
-                <div data-cat="models" style="background-color: var(--bg-card); border: 1px solid var(--border-muted); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;">
-                    <div style="width: 100%; height: 240px; overflow: hidden; border-bottom: 1px solid var(--border-muted);">
-                        <!-- Discord CDN links expire. Save this image into the repo (e.g. fountain.png) and use src="fountain.png" -->
-                        <img src="https://cdn.discordapp.com/attachments/1475336835126526044/1560597740235530280/image.png?ex=6ad34b67&is=6ad1f9e7&hm=0b27d861e5e7813f312b472d4a7f68370a503d15f76e711859c29e87ba83a334&" alt="Roblox Studio Premium Fountain Asset Showcase" style="width: 100%; height: 100%; object-fit: cover; filter: brightness(0.95); display: block;">
-                    </div>
-                    <div style="padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; gap: 0.5rem;">
-                                <h3 style="color: var(--text-bright); margin: 0; font-size: 1.2rem; font-family: monospace;">Premium Lobby Center Fountain</h3>
-                                <span style="background-color: rgba(0,240,255,0.1); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); font-family: monospace; font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold; white-space: nowrap;">R$ 1,000</span>
-                            </div>
-                            <span style="font-size: 0.7rem; color: var(--accent-cyan); background: rgba(0,240,255,0.05); border: 1px solid var(--accent-cyan); padding: 0.2rem 0.5rem; border-radius: 4px; font-family: monospace; font-weight: bold; display: inline-block; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.5px;">[Status: Immediate Asset ID Delivery // Unlimited Stock]</span>
-                            <p style="font-size: 0.85rem; color: var(--text-main); line-height: 1.5; margin: 0 0 1.5rem 0;">
-                                A premium, optimized showcase lobby centerpiece fountain. Featuring customized particle beam physics emitters, high-fidelity geometry layouts, and lightweight structural optimization to ensure high frame rates on any target platform hardware. Ready for instant deployment via asset ID synchronization.
-                            </p>
-                        </div>
-                        <div style="border-top: 1px dashed var(--border-muted); padding-top: 1rem; font-family: monospace; font-size: 0.8rem;">
-                            <div style="margin-bottom: 0.5rem;"><strong style="color: var(--text-bright);">Rights:</strong> Full reuse rights across your account universes. Modification allowed. Resale or source file leaking is strictly forbidden.</div>
-                            <div style="margin-bottom: 0.5rem;"><strong style="color: var(--text-bright);">Fulfillment Method:</strong> Direct delivery of the Roblox Studio asset file link ID straight to your account upon verified transfer.</div>
-                            <div style="margin-bottom: 1.25rem;"><strong style="color: var(--text-bright);">Contact Scope:</strong> Submit an integration ticket or connection query inside the official Corny Games Studio community cluster.</div>
-                            <a href="https://roblox.com" target="_blank" rel="noopener" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background-color: var(--bg-main); border: 1px solid var(--border-muted); color: var(--text-bright); text-decoration: none; padding: 0.65rem; border-radius: 6px; box-sizing: border-box; font-weight: bold;">
-                                <i data-lucide="shopping-bag" style="width: 16px; height: 16px; color: var(--accent-green);"></i>
-                                View Developer Group Marketplace
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <section id="architecture">
             <h2>TECHNICAL ARCHITECTURE PILLARS</h2>
             <div class="badges-section">
                 <div class="badge-container">
                     <div class="mini-badge elite">
-                        <i data-lucide="shield-check" class="badge-icon"></i>
+                        <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
                         <div class="badge-info"><span class="badge-title">DevSecOps &amp; Systems Automation</span><span class="badge-status">Elite Mastery</span></div>
                     </div>
                     <div class="mini-badge expert">
-                        <i data-lucide="cpu" class="badge-icon"></i>
+                        <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></svg>
                         <div class="badge-info"><span class="badge-title">Full-Stack Game Architecture &amp; Systems Design</span><span class="badge-status">Expert Mastery</span></div>
                     </div>
                 </div>
@@ -243,8 +199,8 @@
         </section>
     </main>
 
-    <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
-    <script>if (window.lucide) lucide.createIcons();</script>
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
