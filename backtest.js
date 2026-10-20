@@ -90,6 +90,17 @@
     { g: "protect", key: "partialPct", label: "...close this % of the position", min: 10, max: 90, step: 5 }
   ];
 
+  // Quick starting points for common markets. Futures need whole contracts and margin, not the full contract value.
+  var PRESETS = [
+    { id: "custom", label: "Custom (keep my numbers)" },
+    { id: "crypto", label: "Crypto spot (Coinbase)", v: { pv: 1, wholeUnits: false, maxLeverage: 1, feePct: 0.1 } },
+    { id: "mgc", label: "MGC micro gold futures (10 oz)", v: { pv: 10, wholeUnits: true, maxLeverage: 10, feePct: 0.005 } },
+    { id: "mes", label: "MES micro S&P 500 futures", v: { pv: 5, wholeUnits: true, maxLeverage: 10, feePct: 0.005 } },
+    { id: "mnq", label: "MNQ micro Nasdaq futures", v: { pv: 2, wholeUnits: true, maxLeverage: 10, feePct: 0.005 } },
+    { id: "es", label: "ES E-mini S&P 500 futures", v: { pv: 50, wholeUnits: true, maxLeverage: 10, feePct: 0.005 } },
+    { id: "nq", label: "NQ E-mini Nasdaq futures", v: { pv: 20, wholeUnits: true, maxLeverage: 10, feePct: 0.005 } }
+  ];
+
   // Returns { P } or { error } from a plain object of raw values
   function validate(raw) {
     var P = Object.assign(BT.defaults(), raw);
@@ -128,6 +139,8 @@
 
   function warnings(P, m, be, n) {
     var w = [];
+    if (m.skipped > 0) w.push(m.skipped + " signal" + (m.skipped === 1 ? " was" : "s were") + " skipped because even one " + (P.wholeUnits ? "contract" : "unit") + " costs more than your money allows at " + P.maxLeverage + "x leverage. Raise Max leverage or Starting money (futures only need a small margin, so a cap around 10x is typical).");
+    if (m.trades === 0 && m.skipped === 0) w.push("No trades closed. Try more bars or a different strategy.");
     if (m.trades < 50) w.push("Only " + m.trades + " closed trades. That is too few to trust: load more bars or use a smaller timeframe.");
     if (m.net <= 0) w.push("It loses money at " + P.slipPct + "% slippage" + (be.text ? " (break-even is " + be.text + ")" : "") + ".");
     else if (be.value !== null && be.value < 0.3) w.push("It stops making money below 0.3% slippage, which real trading easily costs. Treat it with suspicion.");
@@ -136,7 +149,7 @@
     return w.join(" ");
   }
 
-  window.BtUI = { validate: validate, tvSettings: tvSettings, warnings: warnings, FIELDS: FIELDS, money: money };
+  window.BtUI = { validate: validate, tvSettings: tvSettings, warnings: warnings, FIELDS: FIELDS, money: money, PRESETS: PRESETS };
 
   /* ================= The settings form ================= */
   var controls = {};
@@ -146,6 +159,11 @@
     var form = $("bt-form"); form.textContent = "";
     var main = el("div", "formgrid"); form.appendChild(main);
     var boxes = { main: main };
+    var pw = el("label"); pw.appendChild(document.createTextNode("Market preset (sets point value, contracts, leverage and fee)"));
+    var ps = el("select"); ps.id = "btf-preset"; ps.setAttribute("aria-label", "Market preset");
+    PRESETS.forEach(function (p) { var op = el("option", "", p.label); op.value = p.id; ps.appendChild(op); });
+    ps.value = "custom"; pw.appendChild(ps); main.appendChild(pw); controls.preset = ps;
+    ps.addEventListener("change", function () { applyPreset(ps.value); });
     [["details", "Strategy details (lengths and levels for each strategy)"], ["protect", "Profit protection (break-even, trailing stop, partial profit)"]].forEach(function (g) {
       var d = el("details"); d.appendChild(el("summary", "", g[1]));
       var grid = el("div", "formgrid"); d.appendChild(grid); form.appendChild(d); boxes[g[0]] = grid;
@@ -169,6 +187,16 @@
     setForm(BT.defaults());
   }
 
+  function applyPreset(id) {
+    var p = PRESETS.filter(function (x) { return x.id === id; })[0];
+    if (!p || !p.v) return;
+    Object.keys(p.v).forEach(function (k) {
+      var c = controls[k]; if (!c) return;
+      if (typeof p.v[k] === "boolean") c.checked = p.v[k]; else c.value = String(p.v[k]);
+    });
+    toast(p.label + " settings applied. Check Starting money and risk still suit you.");
+  }
+
   function setForm(P) {
     FIELDS.forEach(function (f) {
       var c = controls[f.key], v = P[f.key];
@@ -189,7 +217,7 @@
   }
 
   function saveForm() {
-    var out = { data: { src: $("bt-src").value, product: $("bt-product").value, tf: $("bt-tf").value, bars: $("bt-bars").value }, form: {} };
+    var out = { data: { src: $("bt-src").value, product: $("bt-product").value, tf: $("bt-tf").value, bars: $("bt-bars").value, preset: controls.preset.value }, form: {} };
     FIELDS.forEach(function (f) { out.form[f.key] = f.type === "check" ? !!controls[f.key].checked : controls[f.key].value; });
     try { localStorage.setItem(FORM_KEY, JSON.stringify(out)); } catch (e) {}
   }
@@ -202,6 +230,7 @@
       var v = saved.form[f.key]; if (v === undefined) return;
       if (f.type === "check") controls[f.key].checked = !!v; else controls[f.key].value = String(v);
     });
+    if (saved.data && saved.data.preset) controls.preset.value = saved.data.preset;
     if (saved.data) { $("bt-src").value = saved.data.src || "cb"; $("bt-product").value = saved.data.product || "ONDO-USD"; $("bt-tf").value = saved.data.tf || "3600"; $("bt-bars").value = saved.data.bars || "3000"; }
   }
 
@@ -381,7 +410,7 @@
     copyText(tvSettings(r.P), "Settings copied. Type them into the TradingView script.");
   }
 
-  function resetForm() { setForm(BT.defaults()); try { localStorage.removeItem(FORM_KEY); } catch (e) {} toast("Settings reset."); }
+  function resetForm() { setForm(BT.defaults()); controls.preset.value = "custom"; try { localStorage.removeItem(FORM_KEY); } catch (e) {} toast("Settings reset."); }
 
   function syncSource() { var csv = $("bt-src").value === "csv"; $("bt-cb").hidden = csv; $("bt-csv").hidden = !csv; }
 
