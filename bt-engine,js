@@ -1,5 +1,5 @@
 /* bt-engine.js — the CORNY backtest engine (runs in your browser, no server).
-   It is a faithful port of corny-multi-strategy.pine: the same five strategies, the same ATR stop/target sizing,
+   It is a faithful port of corny-multi-strategy.pine: the same six strategies, the same ATR stop/target sizing,
    break-even, trailing stop and partial profit, plus slippage and fees. Pure functions, no DOM.
    Assumptions you should know about (TradingView makes similar ones, but not identical):
    - A signal is read at a bar's close; the order fills at the NEXT bar's open.
@@ -100,34 +100,85 @@
     return a[i - 1] >= b[i - 1] && a[i] < b[i];
   }
 
+  // Session VWAP of the typical price (high+low+close)/3, restarting each session.
+  //   "utc"  : each UTC calendar day (crypto)
+  //   "ny18" : each futures day, which starts at 6pm New York time
+  // If the data has no volume, every bar counts the same.
+  // Intl is slow, so each timestamp is looked up once and remembered
+  var NY_KEY = new Map(), NY_CLOCK = new Map();
+  function memo(cache, f) {
+    return function (t) {
+      var v = cache.get(t);
+      if (v === undefined) { if (cache.size > 300000) cache.clear(); v = f(t); cache.set(t, v); }
+      return v;
+    };
+  }
+  function sessionKeyFn(kind) {
+    if (kind !== "ny18") return function (t) { return Math.floor(t / 86400000); };
+    var fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", hourCycle: "h23" });
+    return memo(NY_KEY, function (t) {
+      var p = {}; fmt.formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+      var day = Date.UTC(+p.year, +p.month - 1, +p.day) / 86400000;
+      return +p.hour >= 18 ? day + 1 : day;
+    });
+  }
+  function vwapOf(c, kind) {
+    var key = sessionKeyFn(kind), out = fill(c.length, NA), cur = null, pv = 0, vv = 0;
+    for (var i = 0; i < c.length; i++) {
+      var k = key(c[i].t);
+      if (k !== cur) { cur = k; pv = 0; vv = 0; }
+      var tp = (c[i].h + c[i].l + c[i].c) / 3, v = c[i].v === undefined ? 1 : (c[i].v > 0 ? c[i].v : 0);
+      pv += tp * v; vv += v;
+      out[i] = vv > 0 ? pv / vv : tp;
+    }
+    return out;
+  }
+
+  // Hour of day in New York as a decimal (8.5 = 08:30), from each bar's open time
+  function nyClockFn() {
+    var fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "numeric", hourCycle: "h23" });
+    return memo(NY_CLOCK, function (t) {
+      var p = {}; fmt.formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+      return +p.hour + (+p.minute) / 60;
+    });
+  }
+  // true where the bar opens inside [start, end) New York time; a window that crosses midnight is allowed
+  function windowFlags(times, a, b) {
+    var h = nyClockFn(), out = new Array(times.length);
+    for (var i = 0; i < times.length; i++) { var x = h(times[i]); out[i] = a <= b ? (x >= a && x < b) : (x >= a || x < b); }
+    return out;
+  }
+
   /* ================= Parameters ================= */
-  var MODES = ["EMA Trend", "RSI Mean Reversion", "MACD Momentum", "Bollinger Bounce", "Breakout"];
+  var MODES = ["EMA VWAP", "Breakout", "EMA Trend", "RSI Mean Reversion", "MACD Momentum", "Bollinger Bounce"];
 
   function defaults() {
     return {
-      mode: "EMA Trend",
+      mode: "EMA VWAP",
+      vwFast: 9, vwSlow: 15, vwapSession: "utc",
       fastLen: 20, slowLen: 50, rsiLen: 14, rsiBuy: 30, rsiSell: 70, macdFast: 12, macdSlow: 26, macdSig: 9,
       bbLen: 20, bbMult: 2.0, trendLen: 200, brkLen: 20,
       atrLen: 14, stopMult: 2.0, rr: 2.0, riskPct: 1.0, allowShort: false,
       useBE: false, beR: 1.0, beBufATR: 0.1, useTrail: false, trailStart: 1.5, trailATR: 2.0, noTarget: false,
       usePartial: false, partialR: 1.0, partialPct: 50,
+      useSession: false, sessStart: 8, sessEnd: 15, flatAtEnd: false, tradeFrom: 0,
       slipPct: 3.0, feePct: 0.05, capital: 10000, pv: 1, wholeUnits: false, maxLeverage: 1
     };
   }
 
   /* ================= Signals ================= */
-  function indicators(c, P) {
+  // mode is optional. With it, only the indicators that strategy uses are calculated (much faster); without it, everything is.
+  function indicators(c, P, mode) {
     var close = c.map(function (x) { return x.c; }), high = c.map(function (x) { return x.h; }), low = c.map(function (x) { return x.l; });
-    var m = macd(close, P.macdFast, P.macdSlow, P.macdSig);
-    var b = bb(close, P.bbLen, P.bbMult);
-    return {
-      close: close, atr: atrOf(c, P.atrLen),
-      fast: ema(close, P.fastLen), slow: ema(close, P.slowLen), rsi: rsi(close, P.rsiLen),
-      trend: ema(close, Math.max(P.trendLen, 1)),
-      hiPrev: shift1(highest(high, P.brkLen)), loPrev: shift1(lowest(low, P.brkLen)),
-      macdLine: m.line, macdSignal: m.signal, bbUp: b.up, bbLo: b.lo,
-      rsiBuyLine: fill(c.length, P.rsiBuy), rsiSellLine: fill(c.length, P.rsiSell)
-    };
+    var all = !mode, ind = { t: c.map(function (x) { return x.t; }), close: close, atr: atrOf(c, P.atrLen) };
+    if (all || mode === "EMA VWAP") { ind.vwFast = ema(close, P.vwFast); ind.vwSlow = ema(close, P.vwSlow); ind.vwap = vwapOf(c, P.vwapSession); }
+    if (all || mode === "EMA Trend") { ind.fast = ema(close, P.fastLen); ind.slow = ema(close, P.slowLen); }
+    if (all || mode === "RSI Mean Reversion") { ind.rsi = rsi(close, P.rsiLen); ind.rsiBuyLine = fill(c.length, P.rsiBuy); ind.rsiSellLine = fill(c.length, P.rsiSell); }
+    if (all || mode === "RSI Mean Reversion" || mode === "MACD Momentum" || mode === "Bollinger Bounce") ind.trend = ema(close, Math.max(P.trendLen, 1));
+    if (all || mode === "MACD Momentum") { var m = macd(close, P.macdFast, P.macdSlow, P.macdSig); ind.macdLine = m.line; ind.macdSignal = m.signal; }
+    if (all || mode === "Bollinger Bounce") { var bands = bb(close, P.bbLen, P.bbMult); ind.bbUp = bands.up; ind.bbLo = bands.lo; }
+    if (all || mode === "Breakout") { ind.hiPrev = shift1(highest(high, P.brkLen)); ind.loPrev = shift1(lowest(low, P.brkLen)); }
+    return ind;
   }
 
   function signals(mode, ind, P) {
@@ -135,20 +186,25 @@
     function up(i) { return P.trendLen === 0 || (!isn(ind.trend[i]) && ind.close[i] > ind.trend[i]); }
     function dn(i) { return P.trendLen === 0 || (!isn(ind.trend[i]) && ind.close[i] < ind.trend[i]); }
     for (var i = 0; i < n; i++) {
-      if (mode === "EMA Trend") { L[i] = crossover(ind.fast, ind.slow, i); S[i] = crossunder(ind.fast, ind.slow, i); }
+      if (mode === "EMA VWAP") {
+        var okV = !isn(ind.vwap[i]);
+        L[i] = crossover(ind.vwFast, ind.vwSlow, i) && okV && ind.close[i] > ind.vwap[i];
+        S[i] = crossunder(ind.vwFast, ind.vwSlow, i) && okV && ind.close[i] < ind.vwap[i];
+      }
+      else if (mode === "EMA Trend") { L[i] = crossover(ind.fast, ind.slow, i); S[i] = crossunder(ind.fast, ind.slow, i); }
       else if (mode === "RSI Mean Reversion") { L[i] = crossover(ind.rsi, ind.rsiBuyLine, i) && up(i); S[i] = crossunder(ind.rsi, ind.rsiSellLine, i) && dn(i); }
       else if (mode === "MACD Momentum") { L[i] = crossover(ind.macdLine, ind.macdSignal, i) && up(i); S[i] = crossunder(ind.macdLine, ind.macdSignal, i) && dn(i); }
       else if (mode === "Bollinger Bounce") { L[i] = crossover(ind.close, ind.bbLo, i) && up(i); S[i] = crossunder(ind.close, ind.bbUp, i) && dn(i); }
       else { L[i] = crossover(ind.close, ind.hiPrev, i); S[i] = crossunder(ind.close, ind.loPrev, i); }
     }
-    return { long: L, short: S };
+    return { long: L, short: S, win: P.useSession ? windowFlags(ind.t, P.sessStart, P.sessEnd) : null };
   }
 
   /* ================= Simulation ================= */
   function simulate(c, sig, atr, P) {
     var n = c.length, trades = [], equity = fill(n, P.capital), pv = P.pv;
     var slip = P.slipPct / 100, comm = P.feePct / 100;
-    var cash = P.capital, pos = null, pend = null, pendClose = false, stopD = NA;
+    var cash = P.capital, pos = null, pend = null, pendClose = false, pendFlat = false, stopD = NA;
     var fees = 0, slipPaid = 0, skipped = 0, EPS = 1e-12;
 
     function eqAt(price) { return cash + (pos ? (price - pos.entry) * pos.dir * pos.qty * pv : 0); }
@@ -177,6 +233,7 @@
       var b = c[i];
 
       /* 1) market orders placed at the previous close fill at this open */
+      if (pendFlat && pos) closeQty(pos.qty, b.o, i, "end of trading hours", true);
       if (pendClose && pos && pos.dir > 0) closeQty(pos.qty, b.o, i, "opposite signal", true);
       if (pend) {
         if (pos && pos.dir !== pend.dir) closeQty(pos.qty, b.o, i, "reversal", true);
@@ -186,7 +243,7 @@
           pos.armed = { stop: pend.sigClose - pend.dir * pend.stopDist, target: (P.noTarget && P.useTrail) ? NA : pend.sigClose + pend.dir * pend.stopDist * P.rr, tp1: NA };
         }
       }
-      pend = null; pendClose = false;
+      pend = null; pendClose = false; pendFlat = false;
 
       /* 2) stops and targets inside this bar (stop first if both are reachable) */
       if (pos) {
@@ -212,9 +269,11 @@
       /* 3) at the close: read the signals and size the next order */
       var a = atr[i];
       var sL = sig.long[i], sS = sig.short[i];
+      if (i < (P.tradeFrom || 0)) { sL = false; sS = false; }       // warm-up bars: indicators run, no trading
       if ((sL || sS) && !isn(a)) stopD = a * P.stopMult;
+      var inWin = !sig.win || sig.win[i];                           // entries only inside your trading hours
       if (i < n - 1 && !isn(a)) {
-        if ((sL || (sS && P.allowShort)) && !isn(stopD)) {
+        if (((sL && inWin) || (sS && P.allowShort && inWin)) && !isn(stopD)) {
           var dir = sL ? 1 : -1, eq = eqAt(b.c);
           if (eq > 0) {
             var sd = a * P.stopMult, raw = (eq * P.riskPct / 100) / (sd * pv), q2 = P.wholeUnits ? Math.max(1, Math.floor(raw)) : raw;
@@ -226,6 +285,7 @@
         } else if (sS && !P.allowShort) {
           pendClose = true;
         }
+        if (P.useSession && P.flatAtEnd && sig.win && !sig.win[i] && pos) pendFlat = true;
       }
 
       /* 4) manage the open trade: best price, break-even, trailing stop, and the levels for the next bar */
@@ -265,15 +325,15 @@
   }
 
   function run(c, P) {
-    var ind = indicators(c, P), sig = signals(P.mode, ind, P), res = simulate(c, sig, ind.atr, P);
+    var ind = indicators(c, P, P.mode), sig = signals(P.mode, ind, P), res = simulate(c, sig, ind.atr, P);
     return { trades: res.trades, equity: res.equity, open: res.open, metrics: metrics(c, res, P) };
   }
 
   // runs the same strategy at several slippage levels and finds the % where net profit crosses zero
-  var LADDER = [0, 0.1, 0.3, 0.5, 1, 3, 5];
+  var LADDER = [0, 0.01, 0.02, 0.05, 0.1, 0.3, 0.5, 1, 3, 5];
   function ladder(c, P, levels) {
     levels = levels || LADDER;
-    var ind = indicators(c, P), sig = signals(P.mode, ind, P), rows = [];
+    var ind = indicators(c, P, P.mode), sig = signals(P.mode, ind, P), rows = [];
     levels.forEach(function (s) {
       var Q = Object.assign({}, P, { slipPct: s }), res = simulate(c, sig, ind.atr, Q), m = metrics(c, res, Q);
       rows.push({ slip: s, net: m.net, trades: m.trades, maxDDpct: m.maxDDpct, winRate: m.winRate });
@@ -295,6 +355,60 @@
     return { value: rows[rows.length - 1].slip, text: "above " + rows[rows.length - 1].slip + "% per order" };
   }
 
+  /* ================= Optimizer helpers ================= */
+  // spec: [{ key, from, to, step, int }]  ->  every combination, or { tooMany: true } past the cap
+  function gridCombos(spec, cap) {
+    var lists = spec.map(function (s) {
+      var out = [];
+      if (!(s.step > 0) || s.from > s.to) return out;
+      for (var v = s.from; v <= s.to + 1e-9; v += s.step) out.push(Math.round(v * 1e6) / 1e6);
+      return out;
+    });
+    var count = lists.reduce(function (a, l) { return a * l.length; }, spec.length ? 1 : 0);
+    if (count > cap) return { count: count, tooMany: true, combos: [] };
+    var combos = [{}];
+    spec.forEach(function (s, i) {
+      var next = [];
+      combos.forEach(function (cb) { lists[i].forEach(function (v) { var o = Object.assign({}, cb); o[s.key] = s.int ? Math.round(v) : v; next.push(o); }); });
+      combos = next;
+    });
+    return { count: count, tooMany: false, combos: spec.length ? combos : [] };
+  }
+
+  // "net" = net profit, "pf" = profit factor, "calmar" = net profit divided by the worst drawdown in dollars
+  function objectiveOf(m, kind, capital) {
+    if (kind === "net") return m.net;
+    if (kind === "pf") return m.profitFactor === Infinity ? 10 : (m.profitFactor === m.profitFactor ? Math.min(m.profitFactor, 10) : -Infinity);
+    return m.net / Math.max(m.maxDD, 0.01 * capital);
+  }
+
+  // Indicators only look backwards, so they are calculated once on all the data and the signals are then cut into
+  // segments. A segment may be given `from - w0` warm-up bars: its indicators are already warm, but it may not trade them.
+  function segRun(c, sig, atr, P, w0, from, to) {
+    var cs = c.slice(w0, to);
+    var sg = { long: sig.long.slice(w0, to), short: sig.short.slice(w0, to), win: sig.win ? sig.win.slice(w0, to) : null };
+    var Q = Object.assign({}, P, { tradeFrom: from - w0 });
+    return metrics(cs, simulate(cs, sg, atr.slice(w0, to), Q), Q);
+  }
+
+  // Tunes on the first `split` bars, then runs the SAME settings on the bars after it.
+  function evalCombo(c, base, over, split, warm) {
+    var P = Object.assign({}, base, over, { tradeFrom: 0 }), ind = indicators(c, P, P.mode), sig = signals(P.mode, ind, P);
+    return { train: segRun(c, sig, ind.atr, P, 0, 0, split), test: segRun(c, sig, ind.atr, P, Math.max(0, split - warm), split, c.length) };
+  }
+
+  // Two directions, so one lucky stretch of market can't carry a setting:
+  //   fold a: tune on the FIRST share of the data, test on the rest (later)
+  //   fold b: tune on the LAST share of the data, test on the rest (earlier)
+  function evalFolds(c, base, over, share, warm) {
+    var P = Object.assign({}, base, over, { tradeFrom: 0 }), n = c.length, split = Math.floor(n * share), edge = n - split;
+    var ind = indicators(c, P, P.mode), sig = signals(P.mode, ind, P), atr = ind.atr;
+    return {
+      a: { train: segRun(c, sig, atr, P, 0, 0, split), test: segRun(c, sig, atr, P, Math.max(0, split - warm), split, n) },
+      b: { train: segRun(c, sig, atr, P, Math.max(0, edge - warm), edge, n), test: segRun(c, sig, atr, P, 0, 0, edge) }
+    };
+  }
+
   function compare(c, P, modes) {
     return (modes || MODES).map(function (m) {
       var Q = Object.assign({}, P, { mode: m }), r = run(c, Q), l = ladder(c, Q);
@@ -306,7 +420,7 @@
   // Coinbase Exchange candles: [time, low, high, open, close, volume], newest first
   function fromCoinbase(rows) {
     var seen = {}, out = [];
-    rows.forEach(function (r) { if (!seen[r[0]]) { seen[r[0]] = 1; out.push({ t: r[0] * 1000, o: +r[3], h: +r[2], l: +r[1], c: +r[4] }); } });
+    rows.forEach(function (r) { if (!seen[r[0]]) { seen[r[0]] = 1; out.push({ t: r[0] * 1000, o: +r[3], h: +r[2], l: +r[1], c: +r[4], v: +r[5] || 0 }); } });
     out.sort(function (a, b) { return a.t - b.t; });
     return out.filter(valid);
   }
@@ -320,20 +434,21 @@
     var head = lines[0].split(sep).map(function (h) { return h.trim().replace(/^"|"$/g, "").toLowerCase(); });
     function idx(names) { for (var i = 0; i < names.length; i++) { var k = head.indexOf(names[i]); if (k > -1) return k; } return -1; }
     var it = idx(["time", "date", "datetime", "timestamp"]), io = idx(["open", "o"]), ih = idx(["high", "h"]), il = idx(["low", "l"]), ic = idx(["close", "c"]);
+    var iv = idx(["volume", "vol", "v"]);
     if (it < 0 || io < 0 || ih < 0 || il < 0 || ic < 0) return { error: "Couldn't find time, open, high, low and close columns in the first row." };
     var out = [];
     for (var r = 1; r < lines.length; r++) {
       var f = lines[r].split(sep).map(function (x) { return x.trim().replace(/^"|"$/g, ""); }), tv = f[it], t;
       if (/^\d+(\.\d+)?$/.test(tv)) { t = Number(tv); if (t < 1e11) t *= 1000; } else t = Date.parse(tv);
-      var bar = { t: t, o: +f[io], h: +f[ih], l: +f[il], c: +f[ic] };
+      var bar = { t: t, o: +f[io], h: +f[ih], l: +f[il], c: +f[ic], v: iv < 0 ? 1 : (+f[iv] > 0 ? +f[iv] : 0) };
       if (valid(bar)) out.push(bar);
     }
     out.sort(function (a, b) { return a.t - b.t; });
     if (out.length < 60) return { error: "Only " + out.length + " usable bars. You need at least 60 (a few hundred is better)." };
-    return { candles: out };
+    return { candles: out, hasVolume: iv > -1 };
   }
 
   root.BT = { MODES: MODES, LADDER: LADDER, defaults: defaults, indicators: indicators, signals: signals, simulate: simulate, metrics: metrics,
-              run: run, ladder: ladder, breakEven: breakEven, compare: compare, fromCoinbase: fromCoinbase, fromCsv: fromCsv,
-              ind: { ema: ema, rma: rma, sma: sma, stdev: stdev, rsi: rsi, atr: atrOf, macd: macd, bb: bb, highest: highest, lowest: lowest, crossover: crossover, crossunder: crossunder } };
+              run: run, ladder: ladder, gridCombos: gridCombos, objectiveOf: objectiveOf, evalCombo: evalCombo, evalFolds: evalFolds, windowFlags: windowFlags, breakEven: breakEven, compare: compare, fromCoinbase: fromCoinbase, fromCsv: fromCsv,
+              ind: { vwap: vwapOf, ema: ema, rma: rma, sma: sma, stdev: stdev, rsi: rsi, atr: atrOf, macd: macd, bb: bb, highest: highest, lowest: lowest, crossover: crossover, crossunder: crossunder } };
 })(typeof window !== "undefined" ? window : globalThis);
