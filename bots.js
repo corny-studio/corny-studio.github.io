@@ -192,9 +192,11 @@
     STRATEGIES.forEach(function (st) { if (names.indexOf(st.name) === -1) names.push(st.name); });
     if (sel) sel.forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); });
 
-    $("active-note").textContent = sel
-      ? "Counting only: " + sel.join(", ") + ". Everything else runs as a shadow."
-      : "Counting every bot. Make one active below and the rest keep running as shadows.";
+    $("active-note").textContent = data.workerOld
+      ? "Your Worker is out of date, so choosing an active bot is off. Paste the newest relay-worker.js into Cloudflare and deploy."
+      : sel
+        ? "Counting only: " + sel.join(", ") + ". Everything else runs as a shadow."
+        : "Counting every bot. Make one active below and the rest keep running as shadows.";
     $("count-all").hidden = !sel;
 
     var rows = names.map(function (name) {
@@ -204,7 +206,8 @@
       nameCell.appendChild(el("span", "badge " + (sel ? (counted ? "on" : "shadow") : "all"), sel ? (counted ? "active" : "shadow") : "counting"));
       var only = !!(sel && counted && sel.length === 1);
       var pick = el("button", "btn small" + (only ? "" : " solid"), only ? "Active" : "Make active"); pick.type = "button";
-      pick.disabled = only; pick.setAttribute("aria-label", "Make " + name + " the active bot");
+      pick.disabled = only || !!data.workerOld; pick.setAttribute("aria-label", "Make " + name + " the active bot");
+      if (data.workerOld) pick.title = "Update your Worker code first";
       pick.addEventListener("click", function () { setActive([name]); });
       var btns = el("span", "cellbtns"); btns.appendChild(pick);
       if (!b) return [{ node: nameCell }, "—", "—", "—", "0", "—", "no alerts yet", { node: btns }];
@@ -301,8 +304,20 @@
   }
 
   /* ================= Actions ================= */
+  var oldWarned = false;
   function refresh() {
-    return api("GET", "/bots").then(function (j) { data = j; renderAll(); }).catch(function (e) { toast("Bots: " + e.message, true); });
+    return api("GET", "/bots").then(function (j) {
+      // A Worker deployed before the "choose the active bot" update doesn't send these fields. Fill them in so the page still works.
+      j.workerOld = !j.selection || !j.others;
+      if (!j.selection) j.selection = { active: null };
+      if (!j.others) j.others = { realized: 0, unrealized: 0, total: 0, bots: 0 };
+      (j.daily || []).forEach(function (d) { if (d.totalAll === undefined) d.totalAll = d.total; });
+      data = j; renderAll();
+      if (j.workerOld && !oldWarned) {
+        oldWarned = true;
+        toast("Your Worker code is older than this page. Paste the newest relay-worker.js into Cloudflare and deploy to turn on Make active.", true);
+      }
+    }).catch(function (e) { toast("Bots: " + e.message, true); });
   }
 
   function sendTest() {
