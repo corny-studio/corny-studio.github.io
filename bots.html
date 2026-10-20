@@ -64,6 +64,14 @@
         .check { display: flex; align-items: center; gap: 8px; font: 0.74rem var(--mono); color: var(--text); padding-top: 18px; }
         .check input { width: auto; }
         .rowchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+        .sweeprow { display: grid; grid-template-columns: auto minmax(120px, 1.4fr) repeat(3, minmax(70px, 1fr)); gap: 8px; align-items: end; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+        .sweeprow .swl { font-size: 0.82rem; padding-bottom: 9px; }
+        .sweeprow input[type=checkbox] { width: auto; margin-bottom: 11px; }
+        .swf { font: 0.62rem var(--mono); color: var(--faint); }
+        .optsum { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--raised); margin: 12px 0; }
+        .optsum p { font-size: 0.82rem; line-height: 1.6; margin: 2px 0; }
+        .optsum .verdict { font-weight: 700; margin-top: 8px; }
+        .warnbox { border: 1px solid rgba(245,184,61,0.4); border-radius: 8px; padding: 10px 14px; color: var(--warn); font-size: 0.82rem; }
         .hint { font: 0.64rem var(--mono); color: var(--faint); }
         .badge { font: 700 0.58rem var(--mono); letter-spacing: 0.8px; text-transform: uppercase; border-radius: 20px; padding: 2px 8px; margin-left: 8px; border: 1px solid currentColor; }
         .badge.on { color: var(--ok); } .badge.shadow { color: var(--faint); } .badge.all { color: var(--cyan); }
@@ -216,11 +224,16 @@
                 <div id="bt-form"></div>
                 <div class="actions" style="margin-top:12px">
                     <button id="bt-run" class="btn solid" type="button">Run backtest</button>
-                    <button id="bt-compare-btn" class="btn" type="button">Compare all five</button>
+                    <button id="bt-compare-btn" class="btn" type="button">Compare all strategies</button>
                     <button id="bt-copy" class="btn" type="button">Copy settings for TradingView</button>
                     <button id="bt-reset" class="btn" type="button">Reset to defaults</button>
                 </div>
                 <p class="note">Assumptions: signals are read at a bar's close and fill at the next open. If a stop and a target are both reachable in one bar, the stop is assumed to hit first. Slippage hits market entries, market closes and stop exits, not limit targets. TradingView makes similar but not identical assumptions, so expect small differences.</p>
+            </section>
+
+            <section class="card">
+                <h2>3 · Optimizer <small>tune on part of the data, test on the rest</small></h2>
+                <div id="opt-box"></div>
             </section>
 
             <section id="bt-results" class="card" hidden>
@@ -233,7 +246,7 @@
             </section>
 
             <section id="bt-compare-card" class="card" hidden>
-                <h2>Compare all five <small>same data, same settings</small></h2>
+                <h2>Compare all strategies <small>same data, same settings</small></h2>
                 <div class="scroll"><table id="bt-compare"></table></div>
                 <p class="note"><b>Make active</b> picks that strategy as the one that counts on your Paper ledger. Break-even slippage is the number to compare: a strategy that survives 0.5% is sturdier than one that only wins at 0%.</p>
             </section>
@@ -293,7 +306,7 @@
                 <div class="step">
                     <h3><b>3</b>Add the alert in TradingView</h3>
                     <ol>
-                        <li>Put <code>corny-multi-strategy.pine</code> on a chart. Open its <b>Settings</b> and pick a <b>Strategy</b> (EMA Trend, RSI Mean Reversion, MACD Momentum, Bollinger Bounce or Breakout), then click <b>Alert</b>.</li>
+                        <li>Put <code>corny-multi-strategy.pine</code> on a chart. Open its <b>Settings</b> and pick a <b>Strategy</b> (EMA VWAP, Breakout, EMA Trend, RSI Mean Reversion, MACD Momentum or Bollinger Bounce), then click <b>Alert</b>.</li>
                         <li>Condition: that strategy. Paste the message above into <b>Message</b>. The bot name is filled in automatically from the strategy you picked.</li>
                         <li>Want to compare several? Add the script to the chart again with a different Strategy and make one more alert with the <b>same message</b>. Each shows up here as its own bot, and you pick which one is active above.</li>
                         <li>Under Notifications tick <b>Webhook URL</b> and paste the URL above. As far as I know, TradingView needs a paid plan and two-factor login turned on for webhooks.</li>
