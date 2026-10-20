@@ -149,7 +149,7 @@
     var n = c.length, trades = [], equity = fill(n, P.capital), pv = P.pv;
     var slip = P.slipPct / 100, comm = P.feePct / 100;
     var cash = P.capital, pos = null, pend = null, pendClose = false, stopD = NA;
-    var fees = 0, slipPaid = 0, EPS = 1e-12;
+    var fees = 0, slipPaid = 0, skipped = 0, EPS = 1e-12;
 
     function eqAt(price) { return cash + (pos ? (price - pos.entry) * pos.dir * pos.qty * pv : 0); }
 
@@ -221,7 +221,8 @@
             var cap = (eq * P.maxLeverage) / (b.c * pv);
             q2 = P.wholeUnits ? Math.min(q2, Math.floor(cap)) : Math.min(q2, cap);
             if (q2 > 0 && isFinite(q2)) pend = { dir: dir, qty: q2, sigClose: b.c, stopDist: sd };
-          }
+            else skipped++;     // one unit costs more than your money allows at this leverage
+          } else skipped++;
         } else if (sS && !P.allowShort) {
           pendClose = true;
         }
@@ -245,7 +246,7 @@
 
       equity[i] = eqAt(b.c);
     }
-    return { trades: trades, equity: equity, open: pos ? { dir: pos.dir, qty: pos.qty, entry: pos.entry } : null, fees: fees, slipPaid: slipPaid };
+    return { trades: trades, equity: equity, open: pos ? { dir: pos.dir, qty: pos.qty, entry: pos.entry } : null, fees: fees, slipPaid: slipPaid, skipped: skipped };
   }
 
   /* ================= Results ================= */
@@ -259,7 +260,7 @@
       net: net, returnPct: net / P.capital * 100, trades: t.length, wins: wins, winRate: t.length ? wins / t.length * 100 : NA,
       profitFactor: gl > 0 ? gw / gl : (gw > 0 ? Infinity : NA), avgWin: wins ? gw / wins : 0, avgLoss: (t.length - wins) ? -gl / (t.length - wins) : 0,
       maxDD: maxDD, maxDDpct: maxDDpct, buyHoldPct: first ? (last / first - 1) * 100 : NA,
-      fees: res.fees, slipPaid: res.slipPaid, finalEquity: res.equity.length ? res.equity[res.equity.length - 1] : P.capital, open: res.open
+      fees: res.fees, slipPaid: res.slipPaid, skipped: res.skipped || 0, finalEquity: res.equity.length ? res.equity[res.equity.length - 1] : P.capital, open: res.open
     };
   }
 
