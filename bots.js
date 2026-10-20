@@ -6,7 +6,9 @@
   // If bots.html is older than this file, say so on screen instead of silently staying locked
   var REQUIRED = ["locked", "app", "hud", "bots-table", "pos-table", "daily-table", "daily-chart", "fills-table", "hook-status", "gen-secret",
                   "secret", "copy-secret", "bot-name", "bot-symbol", "bot-pv", "setup-err", "hook-url", "copy-url", "hook-msg", "copy-msg",
-                  "refresh", "send-test", "csv-daily", "csv-fills", "reset-all", "stat-note", "updated", "toast"];
+                  "refresh", "send-test", "csv-daily", "csv-fills", "reset-all", "stat-note", "updated", "toast",
+                  "name-mode", "strategy-lib", "active-note", "count-all",
+                  "tabbtn-paper", "tabbtn-backtest", "tabbtn-setup", "tab-paper", "tab-backtest", "tab-setup", "bt-form"];
   var missingIds = REQUIRED.filter(function (id) { return !document.getElementById(id); });
   if (missingIds.length) {
     var lk = document.getElementById("locked");
@@ -26,13 +28,15 @@
       return (m && POINT_VALUES[m[1]]) || 1;
     },
 
+    // bot === null means "take the name from the strategy" (TradingView fills in {{strategy.order.alert_message}}).
     // Returns { error } or { message }
     buildMessage: function (secret, bot, pv) {
       if (!/^[A-Za-z0-9_-]{16,64}$/.test(secret)) return { error: "Password must be 16-64 letters, numbers, _ or - (use Generate)." };
-      if (!/^[A-Za-z0-9 _.-]{1,40}$/.test(bot)) return { error: "Bot name: 1-40 letters, numbers, spaces, _ . -" };
+      if (bot !== null && !/^[A-Za-z0-9 _.-]{1,40}$/.test(bot)) return { error: "Bot name: 1-40 letters, numbers, spaces, _ . -" };
       var n = Number(pv);
       if (!(n > 0 && n <= 1e6)) return { error: "Point value must be a positive number." };
-      return { message: '{"key":"' + secret + '","bot":"' + bot + '","symbol":"{{ticker}}","action":"{{strategy.order.action}}","qty":{{strategy.order.contracts}},"price":{{strategy.order.price}},"pv":' + n + '}' };
+      var name = bot === null ? "{{strategy.order.alert_message}}" : bot;
+      return { message: '{"key":"' + secret + '","bot":"' + name + '","symbol":"{{ticker}}","action":"{{strategy.order.action}}","qty":{{strategy.order.contracts}},"price":{{strategy.order.price}},"pv":' + n + '}' };
     },
 
     csvCell: function (v) {
@@ -41,11 +45,13 @@
       return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     },
 
-    dailyCsv: function (daily) {
+    // selected = the active bot list, or null when every bot counts
+    dailyCsv: function (daily, selected) {
       var rows = ["date_ct,bot,pnl"];
       daily.forEach(function (d) {
         Object.keys(d.bots).sort().forEach(function (b) { rows.push([d.date, Lib.csvCell(b), d.bots[b]].join(",")); });
-        rows.push([d.date, "ALL", d.total].join(","));
+        rows.push([d.date, selected ? "ACTIVE" : "ALL", d.total].join(","));
+        if (selected) rows.push([d.date, "ALL_BOTS", d.totalAll].join(","));
       });
       return rows.join("\n") + "\n";
     },
@@ -141,27 +147,76 @@
     var box = $("hud"); box.textContent = "";
     function chip(k, v, cls) { var c = el("div", "chip"); c.appendChild(el("span", "k", k)); c.appendChild(el("span", "v " + (cls || ""), v)); box.appendChild(c); }
     if (!data) { chip("Status", RELAY ? "Loading…" : "No relay", ""); return; }
-    var t = data.totals;
+    var t = data.totals, sel = data.selection.active;
+    chip("Active bot", sel ? (sel.length === 1 ? sel[0] : sel.length + " bots") : "All bots", "zero");
     chip("Total P&L", Lib.money(t.total), sign(t.total));
     chip("Today (CT)", Lib.money(t.today), sign(t.today));
     chip("Realized", Lib.money(t.realized), sign(t.realized));
     chip("Unrealized", Lib.money(t.unrealized), sign(t.unrealized));
+    if (data.others.bots > 0) chip("Shadow P&L", Lib.money(data.others.total), sign(data.others.total));
     chip("Open positions", String(t.open), "zero");
     chip("Fills", String(t.fills), "zero");
     chip("Alerts today", data.stat.alertsToday + "/" + data.stat.perDay, "zero");
     chip("Webhook", data.enabled ? "On" : "Off", data.enabled ? "pos" : "neg");
   }
 
+  var STRATEGIES = [
+    { name: "EMA Trend", pitch: "Buys when the 20 EMA crosses above the 50 EMA.", likes: "strong trends that last", struggles: "choppy sideways markets (many small losses)" },
+    { name: "RSI Mean Reversion", pitch: "Buys when RSI climbs back above 30, only in an uptrend.", likes: "pullbacks and ranges", struggles: "strong one-way trends" },
+    { name: "MACD Momentum", pitch: "Buys when MACD crosses above its signal line, with the trend filter.", likes: "swings with clear momentum", struggles: "sideways whipsaws" },
+    { name: "Bollinger Bounce", pitch: "Buys when price closes back above the lower band, in an uptrend.", likes: "calm ranges that snap back", struggles: "breakouts that keep going" },
+    { name: "Breakout", pitch: "Buys when price breaks the highest high of the last 20 bars.", likes: "big moves after quiet periods", struggles: "fake breakouts" }
+  ];
+
+  function renderLibrary() {
+    var box = $("strategy-lib"); box.textContent = "";
+    STRATEGIES.forEach(function (st) {
+      var c = el("div", "libcard");
+      c.appendChild(el("h3", "", st.name));
+      c.appendChild(el("p", "", st.pitch));
+      var l = el("p"); l.appendChild(el("b", "", "Likes: ")); l.appendChild(document.createTextNode(st.likes)); c.appendChild(l);
+      var w = el("p"); w.appendChild(el("b", "", "Struggles with: ")); w.appendChild(document.createTextNode(st.struggles)); c.appendChild(w);
+      box.appendChild(c);
+    });
+  }
+
+  function setActive(names) {
+    return api("POST", "/bots/active", { active: names }).then(function () { return refresh(); })
+      .catch(function (e) { toast(e.message, true); });
+  }
+
   function renderBots() {
-    var rows = data.bots.map(function (b) {
-      var posText = b.positions.length ? b.positions.map(function (p) { return (p.qty > 0 ? "long " : "short ") + Math.abs(p.qty) + " " + p.symbol; }).join(", ") : "flat";
+    var sel = data.selection.active;
+    var byName = {}, names = [];
+    data.bots.forEach(function (b) { byName[b.name] = b; names.push(b.name); });
+    STRATEGIES.forEach(function (st) { if (names.indexOf(st.name) === -1) names.push(st.name); });
+    if (sel) sel.forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); });
+
+    $("active-note").textContent = sel
+      ? "Counting only: " + sel.join(", ") + ". Everything else runs as a shadow."
+      : "Counting every bot. Make one active below and the rest keep running as shadows.";
+    $("count-all").hidden = !sel;
+
+    var rows = names.map(function (name) {
+      var b = byName[name];
+      var counted = !sel || sel.indexOf(name) > -1;
+      var nameCell = el("span"); nameCell.appendChild(document.createTextNode(name));
+      nameCell.appendChild(el("span", "badge " + (sel ? (counted ? "on" : "shadow") : "all"), sel ? (counted ? "active" : "shadow") : "counting"));
+      var only = !!(sel && counted && sel.length === 1);
+      var pick = el("button", "btn small" + (only ? "" : " solid"), only ? "Active" : "Make active"); pick.type = "button";
+      pick.disabled = only; pick.setAttribute("aria-label", "Make " + name + " the active bot");
+      pick.addEventListener("click", function () { setActive([name]); });
+      var btns = el("span", "cellbtns"); btns.appendChild(pick);
+      if (!b) return [{ node: nameCell }, "—", "—", "—", "0", "—", "no alerts yet", { node: btns }];
       var reset = el("button", "btn small danger", "Reset"); reset.type = "button"; reset.setAttribute("aria-label", "Reset " + b.name);
       reset.addEventListener("click", function () { resetBot(b.name); });
-      return [b.name, { t: Lib.money(b.realized), cls: sign(b.realized) }, { t: Lib.money(b.unrealized), cls: sign(b.unrealized) },
-              { t: Lib.money(b.total), cls: sign(b.total) }, String(b.trades), b.winRate === null ? "—" : b.winRate + "%", posText, { node: reset }];
+      btns.appendChild(reset);
+      var posText = b.positions.length ? b.positions.map(function (p) { return (p.qty > 0 ? "long " : "short ") + Math.abs(p.qty) + " " + p.symbol; }).join(", ") : "flat";
+      return [{ node: nameCell }, { t: Lib.money(b.realized), cls: sign(b.realized) }, { t: Lib.money(b.unrealized), cls: sign(b.unrealized) },
+              { t: Lib.money(b.total), cls: sign(b.total) }, String(b.trades), b.winRate === null ? "—" : b.winRate + "%", posText, { node: btns }];
     });
-    table($("bots-table"), [{ t: "Bot" }, { t: "Realized", r: 1 }, { t: "Unrealized", r: 1 }, { t: "Total", r: 1 }, { t: "Trades", r: 1 }, { t: "Win %", r: 1 }, { t: "Position" }, { t: "" }],
-      rows, "No fills yet. Set up an alert below, or press Send test fill.");
+    table($("bots-table"), [{ t: "Strategy / bot" }, { t: "Realized", r: 1 }, { t: "Unrealized", r: 1 }, { t: "Total", r: 1 }, { t: "Trades", r: 1 }, { t: "Win %", r: 1 }, { t: "Position" }, { t: "" }],
+      rows, "No strategies yet.");
   }
 
   function renderPositions() {
@@ -196,9 +251,9 @@
     renderChart();
     var rows = data.daily.slice().reverse().slice(0, 30).map(function (d) {
       var parts = Object.keys(d.bots).sort().map(function (b) { return b + " " + Lib.money(d.bots[b]); }).join(" · ");
-      return [d.date, { t: Lib.money(d.total), cls: sign(d.total) }, parts];
+      return [d.date, { t: Lib.money(d.total), cls: sign(d.total) }, { t: Lib.money(d.totalAll), cls: sign(d.totalAll) }, parts];
     });
-    table($("daily-table"), [{ t: "Date (CT)" }, { t: "Total", r: 1 }, { t: "By bot" }], rows, "No closed trades yet.");
+    table($("daily-table"), [{ t: "Date (CT)" }, { t: "Counted", r: 1 }, { t: "All bots", r: 1 }, { t: "By bot" }], rows, "No closed trades yet.");
   }
 
   function renderFills() {
@@ -237,8 +292,10 @@
   }
 
   function updateSetup() {
+    var auto = $("name-mode").value !== "own";
+    $("bot-name").disabled = auto;
     $("hook-url").value = RELAY ? RELAY + "/bots/hook" : "";
-    var r = Lib.buildMessage($("secret").value.trim(), $("bot-name").value.trim(), $("bot-pv").value.trim());
+    var r = Lib.buildMessage($("secret").value.trim(), auto ? null : $("bot-name").value.trim(), $("bot-pv").value.trim());
     $("setup-err").textContent = $("secret").value.trim() || r.message ? (r.error || "") : "";
     $("hook-msg").value = r.message || "";
   }
@@ -271,14 +328,33 @@
       .catch(function (e) { toast(e.message, true); });
   }
 
+  /* ================= Tabs ================= */
+  var TABS = ["paper", "backtest", "setup"];
+  function showTab(name) {
+    if (TABS.indexOf(name) === -1) name = "paper";
+    TABS.forEach(function (t) {
+      $("tab-" + t).hidden = t !== name;
+      $("tabbtn-" + t).className = "tabbtn" + (t === name ? " active" : "");
+    });
+    try { sessionStorage.setItem("corny_bots_tab", name); } catch (e) {}
+  }
+  TABS.forEach(function (t) { $("tabbtn-" + t).addEventListener("click", function () { showTab(t); }); });
+  var savedTab = null; try { savedTab = sessionStorage.getItem("corny_bots_tab"); } catch (e) {}
+  showTab(savedTab);
+
+  // lets the backtest tab pick the active strategy and refresh this page
+  window.BotsApp = { setActive: setActive, refresh: refresh, showTab: showTab };
+
   /* ================= Wiring ================= */
   $("refresh").addEventListener("click", refresh);
+  $("count-all").addEventListener("click", function () { setActive(null); });
+  $("name-mode").addEventListener("change", updateSetup);
   $("send-test").addEventListener("click", sendTest);
   $("reset-all").addEventListener("click", resetAll);
   $("csv-fills").addEventListener("click", exportFills);
   $("csv-daily").addEventListener("click", function () {
     if (!data || !data.daily.length) { toast("No daily P&L to export yet.", true); return; }
-    download("cjc-bots-daily-pnl.csv", Lib.dailyCsv(data.daily));
+    download("cjc-bots-daily-pnl.csv", Lib.dailyCsv(data.daily, data.selection.active));
   });
   $("gen-secret").addEventListener("click", function () { $("secret").value = genToken(); updateSetup(); toast("Password made. Copy it into Cloudflare as BOT_WEBHOOK_SECRET."); });
   $("copy-secret").addEventListener("click", function () { if ($("secret").value) copyText($("secret").value, "Password copied."); });
@@ -294,7 +370,7 @@
     $("locked").hidden = admin; $("app").hidden = !admin; $("hud").hidden = !admin;
     clearInterval(timer);
     if (admin) {
-      renderAll();
+      renderLibrary(); renderAll();
       if (RELAY) { refresh(); timer = setInterval(function () { if (!document.hidden) refresh(); }, 120000); }
     } else { data = null; }
   }
