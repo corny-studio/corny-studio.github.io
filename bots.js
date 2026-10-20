@@ -8,7 +8,7 @@
                   "secret", "copy-secret", "bot-name", "bot-symbol", "bot-pv", "setup-err", "hook-url", "copy-url", "hook-msg", "copy-msg",
                   "refresh", "send-test", "csv-daily", "csv-fills", "reset-all", "stat-note", "updated", "toast",
                   "name-mode", "strategy-lib", "active-note", "count-all",
-                  "tabbtn-paper", "tabbtn-backtest", "tabbtn-setup", "tab-paper", "tab-backtest", "tab-setup", "bt-form"];
+                  "tabbtn-paper", "tabbtn-backtest", "tabbtn-setup", "tab-paper", "tab-backtest", "tab-setup", "bt-form", "opt-box"];
   var missingIds = REQUIRED.filter(function (id) { return !document.getElementById(id); });
   if (missingIds.length) {
     var lk = document.getElementById("locked");
@@ -161,11 +161,12 @@
   }
 
   var STRATEGIES = [
+    { name: "EMA VWAP", pitch: "Buys when the 9 EMA crosses above the 15 EMA while price is above VWAP (shorts the reverse).", likes: "intraday trends on 15 minute to 1 hour charts", struggles: "sideways chop around VWAP, and daily charts (VWAP restarts every session)" },
+    { name: "Breakout", pitch: "Buys when price breaks the highest high of the last 20 bars.", likes: "big moves after quiet periods", struggles: "fake breakouts" },
     { name: "EMA Trend", pitch: "Buys when the 20 EMA crosses above the 50 EMA.", likes: "strong trends that last", struggles: "choppy sideways markets (many small losses)" },
     { name: "RSI Mean Reversion", pitch: "Buys when RSI climbs back above 30, only in an uptrend.", likes: "pullbacks and ranges", struggles: "strong one-way trends" },
     { name: "MACD Momentum", pitch: "Buys when MACD crosses above its signal line, with the trend filter.", likes: "swings with clear momentum", struggles: "sideways whipsaws" },
-    { name: "Bollinger Bounce", pitch: "Buys when price closes back above the lower band, in an uptrend.", likes: "calm ranges that snap back", struggles: "breakouts that keep going" },
-    { name: "Breakout", pitch: "Buys when price breaks the highest high of the last 20 bars.", likes: "big moves after quiet periods", struggles: "fake breakouts" }
+    { name: "Bollinger Bounce", pitch: "Buys when price closes back above the lower band, in an uptrend.", likes: "calm ranges that snap back", struggles: "breakouts that keep going" }
   ];
 
   function renderLibrary() {
