@@ -53,6 +53,20 @@
         tr:hover td { background: rgba(255,255,255,0.02); }
         .empty { color: var(--dim); font-size: 0.82rem; padding: 10px 2px; }
         .side-buy { color: var(--ok); } .side-sell { color: var(--bad); } .side-close { color: var(--warn); }
+        .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tabbtn { background: var(--raised); color: var(--dim); border: 1px solid var(--line2); border-radius: 10px; padding: 9px 18px; font: 700 0.78rem var(--mono); cursor: pointer; }
+        .tabbtn:hover { color: var(--text); }
+        .tabbtn.active { color: var(--cyan); border-color: var(--cyan); background: rgba(25,243,255,0.07); }
+        .pane { display: flex; flex-direction: column; gap: 12px; }
+        details { border: 1px solid var(--line); border-radius: 10px; padding: 9px 13px; background: var(--raised); margin-top: 10px; }
+        summary { cursor: pointer; font: 700 0.74rem var(--mono); color: var(--cyan); letter-spacing: 0.5px; }
+        .formgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
+        .check { display: flex; align-items: center; gap: 8px; font: 0.74rem var(--mono); color: var(--text); padding-top: 18px; }
+        .check input { width: auto; }
+        .rowchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+        .hint { font: 0.64rem var(--mono); color: var(--faint); }
+        .badge { font: 700 0.58rem var(--mono); letter-spacing: 0.8px; text-transform: uppercase; border-radius: 20px; padding: 2px 8px; margin-left: 8px; border: 1px solid currentColor; }
+        .badge.on { color: var(--ok); } .badge.shadow { color: var(--faint); } .badge.all { color: var(--cyan); }
         .tag { font: 0.6rem var(--mono); border: 1px solid var(--line2); color: var(--dim); border-radius: 4px; padding: 1px 5px; margin-left: 6px; }
 
         #daily-chart { width: 100%; height: 150px; display: block; margin-bottom: 8px; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; }
@@ -66,6 +80,15 @@
         .btn.small { padding: 3px 10px; font-size: 0.66rem; }
         .btn:disabled { opacity: 0.4; cursor: default; }
         .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .cellbtns { display: flex; gap: 6px; }
+        .lib { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+        .libcard { border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; background: var(--raised); }
+        .libcard h3 { font: 700 0.82rem var(--ui); color: var(--text); margin-bottom: 4px; }
+        .libcard p { font-size: 0.76rem; line-height: 1.5; color: var(--dim); margin-top: 3px; }
+        .libcard b { color: var(--text); font-weight: 600; }
+        select { background: #05080c; border: 1px solid var(--line2); color: #fff; border-radius: 8px; padding: 9px 11px; font: 0.82rem var(--mono); outline: none; width: 100%; }
+        select:focus { border-color: var(--cyan); }
+        input:disabled { opacity: 0.45; }
 
         .setup { display: grid; gap: 14px; }
         .step { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--raised); }
@@ -110,13 +133,24 @@
     </section>
 
     <div id="app" hidden>
-        <section class="card">
-            <h2>Bots <small id="updated">paper ledger · not real money</small></h2>
+        <nav class="tabs" aria-label="Bots sections">
+            <button id="tabbtn-paper" class="tabbtn active" type="button">Paper ledger</button>
+            <button id="tabbtn-backtest" class="tabbtn" type="button">Backtest</button>
+            <button id="tabbtn-setup" class="tabbtn" type="button">Connect TradingView</button>
+        </nav>
+
+        <div id="tab-paper" class="pane">
+<section class="card">
+            <h2>Strategies <small id="updated">paper ledger · not real money</small></h2>
+            <div class="row" style="margin-bottom:10px;flex-wrap:wrap">
+                <span id="active-note" class="note" style="margin:0;flex:1;min-width:220px"></span>
+                <button id="count-all" class="btn small" type="button" hidden>Count every bot</button>
+            </div>
             <div class="scroll"><table id="bots-table"></table></div>
-            <p class="note">Each bot is one strategy; the bot name in the alert message keeps them apart. Open positions are marked at the last alert price, not a live quote.</p>
+            <p class="note">You choose which strategy is <b>active</b>: only its P&amp;L counts in your headline numbers. Every other strategy keeps running as a <b>shadow</b> so you can compare fairly, and switching never loses a position. Open positions are marked at the last alert price, not a live quote.</p>
         </section>
 
-        <div class="grid2">
+<div class="grid2">
             <section class="card">
                 <h2>Open positions</h2>
                 <div class="scroll"><table id="pos-table"></table></div>
@@ -128,12 +162,96 @@
             </section>
         </div>
 
-        <section class="card">
+<section class="card">
             <h2>Fill log <small>latest 100</small></h2>
             <div class="scroll"><table id="fills-table"></table></div>
         </section>
 
-        <section class="card">
+<section class="card">
+            <h2>Tools</h2>
+            <div class="actions">
+                <button id="refresh" class="btn" type="button">Refresh</button>
+                <button id="send-test" class="btn solid" type="button">Send test fill</button>
+                <button id="csv-daily" class="btn" type="button">Daily P&amp;L CSV</button>
+                <button id="csv-fills" class="btn" type="button">All fills CSV</button>
+                <button id="reset-all" class="btn danger" type="button">Reset everything</button>
+            </div>
+            <p id="stat-note" class="note"></p>
+        </section>
+        </div>
+
+        <div id="tab-backtest" class="pane" hidden>
+            <section class="card">
+                <h2>1 · Price data <small id="bt-datastatus">no data loaded yet</small></h2>
+                <div class="fields">
+                    <label>Where from
+                        <select id="bt-src" aria-label="Data source">
+                            <option value="cb" selected>Coinbase (crypto, automatic)</option>
+                            <option value="csv">My own CSV file (any market)</option>
+                        </select>
+                    </label>
+                </div>
+                <div id="bt-cb" class="fields">
+                    <label>Coinbase product<input id="bt-product" value="ONDO-USD" maxlength="16" autocomplete="off"></label>
+                    <label>Timeframe
+                        <select id="bt-tf" aria-label="Timeframe">
+                            <option value="900">15 minutes</option><option value="3600" selected>1 hour</option><option value="21600">6 hours</option><option value="86400">1 day</option>
+                        </select>
+                    </label>
+                    <label>Bars to load
+                        <select id="bt-bars" aria-label="Bars to load">
+                            <option value="1000">1,000</option><option value="2000">2,000</option><option value="3000" selected>3,000</option><option value="5000">5,000</option>
+                        </select>
+                    </label>
+                </div>
+                <div id="bt-csv" class="fields" hidden>
+                    <label>CSV file with time, open, high, low, close columns<input id="bt-file" type="file" accept=".csv,text/csv,text/plain"></label>
+                </div>
+                <div class="actions" style="margin-top:10px"><button id="bt-load" class="btn solid" type="button">Load data</button></div>
+                <p class="note">Coinbase is automatic but only covers crypto pairs it lists. For gold futures or anything else, export the chart from TradingView (chart menu → Export chart data) and pick the CSV option. Candles load in your browser; nothing is stored.</p>
+            </section>
+
+            <section class="card">
+                <h2>2 · Strategy and settings <small>same options as the TradingView script</small></h2>
+                <div id="bt-form"></div>
+                <div class="actions" style="margin-top:12px">
+                    <button id="bt-run" class="btn solid" type="button">Run backtest</button>
+                    <button id="bt-compare-btn" class="btn" type="button">Compare all five</button>
+                    <button id="bt-copy" class="btn" type="button">Copy settings for TradingView</button>
+                    <button id="bt-reset" class="btn" type="button">Reset to defaults</button>
+                </div>
+                <p class="note">Assumptions: signals are read at a bar's close and fill at the next open. If a stop and a target are both reachable in one bar, the stop is assumed to hit first. Slippage hits market entries, market closes and stop exits, not limit targets. TradingView makes similar but not identical assumptions, so expect small differences.</p>
+            </section>
+
+            <section id="bt-results" class="card" hidden>
+                <h2>Results <small id="bt-title"></small></h2>
+                <div id="bt-hud" class="rowchips"></div>
+                <svg id="bt-chart" viewBox="0 0 600 150" preserveAspectRatio="none" role="img" aria-label="Equity curve" style="width:100%;height:150px;display:block;background:var(--raised);border:1px solid var(--line);border-radius:8px;margin-bottom:10px"></svg>
+                <h2 style="margin-top:6px">Slippage ladder <small>same strategy, rising slippage</small></h2>
+                <div class="scroll"><table id="bt-ladder"></table></div>
+                <p id="bt-warn" class="note"></p>
+            </section>
+
+            <section id="bt-compare-card" class="card" hidden>
+                <h2>Compare all five <small>same data, same settings</small></h2>
+                <div class="scroll"><table id="bt-compare"></table></div>
+                <p class="note"><b>Make active</b> picks that strategy as the one that counts on your Paper ledger. Break-even slippage is the number to compare: a strategy that survives 0.5% is sturdier than one that only wins at 0%.</p>
+            </section>
+
+            <section id="bt-trades-card" class="card" hidden>
+                <h2>Trades <small>latest 100</small></h2>
+                <div class="scroll"><table id="bt-trades"></table></div>
+            </section>
+
+<section class="card">
+            <h2>Strategy library <small>what each one does</small></h2>
+            <div id="strategy-lib" class="lib"></div>
+            <p class="note">No strategy wins everywhere. Run several as shadows, watch trades and drawdown over a few weeks, then make the best one active.</p>
+        </section>
+        </div>
+
+        <div id="tab-setup" class="pane" hidden>
+<section class="card">
             <h2>Connect TradingView</h2>
             <div class="setup">
                 <div id="hook-status" class="off">Checking…</div>
@@ -151,7 +269,13 @@
                 <div class="step">
                     <h3><b>2</b>Build the alert</h3>
                     <div class="fields">
-                        <label>Bot name<input id="bot-name" value="EMA Gold" maxlength="40" autocomplete="off"></label>
+                        <label>Bot name comes from
+                            <select id="name-mode" aria-label="Where the bot name comes from">
+                                <option value="auto" selected>The strategy (recommended)</option>
+                                <option value="own">A name I type</option>
+                            </select>
+                        </label>
+                        <label>Bot name (only if you type your own)<input id="bot-name" value="EMA Gold" maxlength="40" autocomplete="off"></label>
                         <label>Symbol (sets the point value)<input id="bot-symbol" value="MGC1!" maxlength="30" autocomplete="off"></label>
                         <label>Point value (P&amp;L per 1.00 move)<input id="bot-pv" value="10" inputmode="decimal" autocomplete="off"></label>
                     </div>
@@ -169,8 +293,9 @@
                 <div class="step">
                     <h3><b>3</b>Add the alert in TradingView</h3>
                     <ol>
-                        <li>Put your strategy on a chart (<code>corny-multi-strategy.pine</code> works), then click <b>Alert</b>.</li>
-                        <li>Condition: pick your strategy. Paste the message above into <b>Message</b>.</li>
+                        <li>Put <code>corny-multi-strategy.pine</code> on a chart. Open its <b>Settings</b> and pick a <b>Strategy</b> (EMA Trend, RSI Mean Reversion, MACD Momentum, Bollinger Bounce or Breakout), then click <b>Alert</b>.</li>
+                        <li>Condition: that strategy. Paste the message above into <b>Message</b>. The bot name is filled in automatically from the strategy you picked.</li>
+                        <li>Want to compare several? Add the script to the chart again with a different Strategy and make one more alert with the <b>same message</b>. Each shows up here as its own bot, and you pick which one is active above.</li>
                         <li>Under Notifications tick <b>Webhook URL</b> and paste the URL above. As far as I know, TradingView needs a paid plan and two-factor login turned on for webhooks.</li>
                         <li>Use <b>Send test fill</b> below to confirm the ledger works. It doesn't test TradingView itself; the first real alert will show in the fill log.</li>
                     </ol>
@@ -178,24 +303,16 @@
                 </div>
             </div>
         </section>
+        </div>
 
-        <section class="card">
-            <h2>Tools</h2>
-            <div class="actions">
-                <button id="refresh" class="btn" type="button">Refresh</button>
-                <button id="send-test" class="btn solid" type="button">Send test fill</button>
-                <button id="csv-daily" class="btn" type="button">Daily P&amp;L CSV</button>
-                <button id="csv-fills" class="btn" type="button">All fills CSV</button>
-                <button id="reset-all" class="btn danger" type="button">Reset everything</button>
-            </div>
-            <p id="stat-note" class="note"></p>
-        </section>
     </div>
 
     <div id="toast" role="status" hidden></div>
 
     <script src="config.js"></script>
     <script src="auth.js"></script>
+    <script src="bt-engine.js"></script>
     <script src="bots.js"></script>
+    <script src="backtest.js"></script>
 </body>
 </html>
