@@ -8,7 +8,7 @@
                   "secret", "copy-secret", "bot-name", "bot-symbol", "bot-pv", "setup-err", "hook-url", "copy-url", "hook-msg", "copy-msg",
                   "refresh", "send-test", "csv-daily", "csv-fills", "reset-all", "stat-note", "updated", "toast",
                   "name-mode", "strategy-lib", "active-note", "count-all",
-                  "tabbtn-paper", "tabbtn-backtest", "tabbtn-setup", "tab-paper", "tab-backtest", "tab-setup", "bt-form", "opt-box"];
+                  "tabbtn-paper", "tabbtn-backtest", "tabbtn-report", "tabbtn-setup", "tab-paper", "tab-backtest", "tab-report", "tab-setup", "bt-form", "opt-box", "pause-all"];
   var missingIds = REQUIRED.filter(function (id) { return !document.getElementById(id); });
   if (missingIds.length) {
     var lk = document.getElementById("locked");
@@ -36,7 +36,7 @@
       var n = Number(pv);
       if (!(n > 0 && n <= 1e6)) return { error: "Point value must be a positive number." };
       var name = bot === null ? "{{strategy.order.alert_message}}" : bot;
-      return { message: '{"key":"' + secret + '","bot":"' + name + '","symbol":"{{ticker}}","action":"{{strategy.order.action}}","qty":{{strategy.order.contracts}},"price":{{strategy.order.price}},"pv":' + n + '}' };
+      return { message: '{"key":"' + secret + '","bot":"' + name + '","symbol":"{{ticker}}","action":"{{strategy.order.action}}","qty":{{strategy.order.contracts}},"price":{{strategy.order.price}},"ps":{{strategy.position_size}},"pv":' + n + '}' };
     },
 
     csvCell: function (v) {
@@ -161,8 +161,11 @@
   }
 
   var STRATEGIES = [
-    { name: "EMA VWAP", pitch: "Buys when the 9 EMA crosses above the 15 EMA while price is above VWAP (shorts the reverse).", likes: "intraday trends on 15 minute to 1 hour charts", struggles: "sideways chop around VWAP, and daily charts (VWAP restarts every session)" },
+    { name: "EMA VWAP", pitch: "Buys when the 9 EMA crosses above the 21 EMA while price is above VWAP (shorts the reverse).", likes: "intraday trends on 15 minute to 1 hour charts", struggles: "sideways chop around VWAP, and daily charts (VWAP restarts every session)" },
     { name: "Breakout", pitch: "Buys when price breaks the highest high of the last 20 bars.", likes: "big moves after quiet periods", struggles: "fake breakouts" },
+    { name: "Triple EMA", pitch: "Buys when the 9 EMA crosses above the 21 EMA while the 21 is already above the 55 (shorts the reverse). Two averages must agree.", likes: "steady trends where pullbacks resume", struggles: "choppy sideways markets where the averages keep crossing" },
+    { name: "EMA Regime", pitch: "Buys when the 21 EMA crosses above the 55, but only if both averages and price are above the 200 EMA (shorts the reverse). Few, slow signals.", likes: "long established trends", struggles: "markets that just turned, because the 200 EMA reacts last" },
+    { name: "EMA + MACD", pitch: "Two crossover systems must agree: a 9/21 EMA cross counts when MACD already points the same way, and a MACD cross counts when the EMAs already do.", likes: "momentum moves with follow-through", struggles: "quick reversals, since both signals lag" },
     { name: "EMA Trend", pitch: "Buys when the 20 EMA crosses above the 50 EMA.", likes: "strong trends that last", struggles: "choppy sideways markets (many small losses)" },
     { name: "RSI Mean Reversion", pitch: "Buys when RSI climbs back above 30, only in an uptrend.", likes: "pullbacks and ranges", struggles: "strong one-way trends" },
     { name: "MACD Momentum", pitch: "Buys when MACD crosses above its signal line, with the trend filter.", likes: "swings with clear momentum", struggles: "sideways whipsaws" },
@@ -186,6 +189,23 @@
       .catch(function (e) { toast(e.message, true); });
   }
 
+  function pauseBot(name, paused) {
+    return api("POST", "/bots/pause", { bot: name, paused: paused }).then(function () { return refresh(); })
+      .then(function () { toast(name + (paused ? " paused. It will only close what it already holds." : " resumed.")); })
+      .catch(function (e) { toast(e.message, true); });
+  }
+  function pauseAll(paused) {
+    return api("POST", "/bots/pause", { all: true, paused: paused }).then(function () { return refresh(); })
+      .then(function () { toast(paused ? "Every bot paused. They only close what they already hold." : "Every bot resumed."); })
+      .catch(function (e) { toast(e.message, true); });
+  }
+  // Flatten the paper position at the last price and start following TradingView again
+  function resyncBot(b) {
+    return Promise.all(b.unsynced.map(function (u) { return api("POST", "/bots/fill", { bot: b.name, symbol: u.symbol, action: "close", qty: 1, price: u.last, pv: u.pv }); }))
+      .then(function () { return refresh(); }).then(function () { toast(b.name + " is following TradingView again."); })
+      .catch(function (e) { toast(e.message, true); });
+  }
+
   function renderBots() {
     var sel = data.selection.active;
     var byName = {}, names = [];
@@ -199,18 +219,39 @@
         ? "Counting only: " + sel.join(", ") + ". Everything else runs as a shadow."
         : "Counting every bot. Make one active below and the rest keep running as shadows.";
     $("count-all").hidden = !sel;
+    var ctl = data.control || { pausedAll: false, paused: [] };
+    var pausedNames = ctl.pausedAll ? ["every bot"] : ctl.paused;
+    if (pausedNames.length) $("active-note").textContent += " Paused: " + pausedNames.join(", ") + " (only closing fills count).";
+    $("pause-all").textContent = ctl.pausedAll ? "Resume all" : "Pause all";
+    $("pause-all").disabled = !!data.pauseOff;
+    $("pause-all").title = data.pauseOff ? "Update your Worker code first" : "Paused bots only close what they already hold. New entries from TradingView are ignored.";
 
     var rows = names.map(function (name) {
       var b = byName[name];
       var counted = !sel || sel.indexOf(name) > -1;
       var nameCell = el("span"); nameCell.appendChild(document.createTextNode(name));
       nameCell.appendChild(el("span", "badge " + (sel ? (counted ? "on" : "shadow") : "all"), sel ? (counted ? "active" : "shadow") : "counting"));
+      var isPaused = ctl.pausedAll || ctl.paused.indexOf(name) > -1;
+      if (isPaused) nameCell.appendChild(el("span", "badge paused", "paused"));
+      else if (b && b.waiting) nameCell.appendChild(el("span", "badge paused", "waiting for flat"));
       var only = !!(sel && counted && sel.length === 1);
       var pick = el("button", "btn small" + (only ? "" : " solid"), only ? "Active" : "Make active"); pick.type = "button";
       pick.disabled = only || !!data.workerOld; pick.setAttribute("aria-label", "Make " + name + " the active bot");
       if (data.workerOld) pick.title = "Update your Worker code first";
       pick.addEventListener("click", function () { setActive([name]); });
       var btns = el("span", "cellbtns"); btns.appendChild(pick);
+      var pz = el("button", "btn small", isPaused ? "Resume" : "Pause"); pz.type = "button"; pz.setAttribute("aria-label", (isPaused ? "Resume " : "Pause ") + name);
+      var allLock = ctl.pausedAll && ctl.paused.indexOf(name) === -1;
+      pz.disabled = !!data.pauseOff || (isPaused && allLock);
+      pz.title = data.pauseOff ? "Update your Worker code first" : allLock ? "Everything is paused: use Resume all" : "Paused bots only close what they already hold. New entries from TradingView are ignored.";
+      pz.addEventListener("click", function () { pauseBot(name, !isPaused); });
+      btns.appendChild(pz);
+      if (b && b.waiting && !isPaused) {
+        var rs2 = el("button", "btn small", "Resync"); rs2.type = "button"; rs2.setAttribute("aria-label", "Resync " + name);
+        rs2.title = "Close this bot's paper position at the last price and follow TradingView again";
+        rs2.addEventListener("click", function () { resyncBot(b); });
+        btns.appendChild(rs2);
+      }
       if (!b) return [{ node: nameCell }, "—", "—", "—", "0", "—", "no alerts yet", { node: btns }];
       var reset = el("button", "btn small danger", "Reset"); reset.type = "button"; reset.setAttribute("aria-label", "Reset " + b.name);
       reset.addEventListener("click", function () { resetBot(b.name); });
@@ -263,6 +304,7 @@
   function renderFills() {
     var rows = data.recent.map(function (f) {
       var sideNode = el("span", "side-" + f.side, f.side); if (f.manual) sideNode.appendChild(el("span", "tag", "manual"));
+      if (f.tvDiff) sideNode.appendChild(el("span", "tag", "TV says " + f.tvPos));
       return [Lib.ct(f.t), f.bot, f.symbol, { node: sideNode }, String(f.qty), String(f.price), { t: f.note ? f.note : Lib.money(f.pnl), cls: f.note ? "" : sign(f.pnl) }, String(f.posAfter)];
     });
     table($("fills-table"), [{ t: "Time (CT)" }, { t: "Bot" }, { t: "Symbol" }, { t: "Side" }, { t: "Qty", r: 1 }, { t: "Price", r: 1 }, { t: "P&L", r: 1 }, { t: "Pos after", r: 1 }], rows, "No fills yet.");
@@ -313,6 +355,7 @@
       if (!j.selection) j.selection = { active: null };
       if (!j.others) j.others = { realized: 0, unrealized: 0, total: 0, bots: 0 };
       (j.daily || []).forEach(function (d) { if (d.totalAll === undefined) d.totalAll = d.total; });
+      if (!j.control) { j.pauseOff = true; j.control = { pausedAll: false, paused: [] }; }   // a Worker from before the pause switch
       data = j; renderAll();
       if (j.workerOld && !oldWarned) {
         oldWarned = true;
@@ -345,7 +388,7 @@
   }
 
   /* ================= Tabs ================= */
-  var TABS = ["paper", "backtest", "setup"];
+  var TABS = ["paper", "backtest", "report", "setup"];
   function showTab(name) {
     if (TABS.indexOf(name) === -1) name = "paper";
     TABS.forEach(function (t) {
@@ -364,6 +407,7 @@
   /* ================= Wiring ================= */
   $("refresh").addEventListener("click", refresh);
   $("count-all").addEventListener("click", function () { setActive(null); });
+  $("pause-all").addEventListener("click", function () { pauseAll(!(data && data.control && data.control.pausedAll)); });
   $("name-mode").addEventListener("change", updateSetup);
   $("send-test").addEventListener("click", sendTest);
   $("reset-all").addEventListener("click", resetAll);
