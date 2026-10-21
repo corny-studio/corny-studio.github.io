@@ -1,67 +1,13 @@
 /* script.js - CORNY//STUDIO homepage
-   1) animated wallpaper  2) links for the Roblox group, Discord, Instagram and GitHub  3) real GitHub activity feed
-   4) honest studio-session row  5) GitHub summary line  6) Roblox group member count (via relay, optional) */
+   1) links for the Roblox group, Discord, Instagram and GitHub  2) real GitHub activity feed
+   3) honest studio-session row  4) GitHub summary line  5) Roblox group member count (via relay, optional)
+   (The animated background is background.html, put on the page by space-bg.js or by index.html.) */
 
 // Settings live in config.js
 const CFG = window.CORNY_CONFIG || {};
 const RELAY_URL = CFG.relayUrl || "";
 const GITHUB_USER = CFG.githubUser || "corny-studio";
 const ROBLOX_GROUP_ID = CFG.robloxGroupId || "";
-
-/* ---------- 1. Wallpaper (stars with scroll parallax) ---------- */
-(function () {
-  const c = document.getElementById("wallpaper-canvas");
-  if (!c) return;
-  const ctx = c.getContext("2d");
-  let w, h, pts;
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const wrap = function (v, m) { return ((v % m) + m) % m; };
-
-  function resize() {
-    w = c.width = window.innerWidth; h = c.height = window.innerHeight;
-    const n = Math.min(90, Math.floor((w * h) / 18000));
-    // z = depth: near stars (z close to 1) are bigger, brighter and move more when you scroll
-    pts = Array.from({ length: n }, function () {
-      return { x: Math.random() * w, y: Math.random() * h, z: 0.25 + Math.random() * 0.75,
-               vx: (Math.random() - 0.5) * 0.2, vy: (Math.random() - 0.5) * 0.2 };
-    });
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, w, h);
-    const sy = window.scrollY;
-    const pos = pts.map(function (p) {
-      return { x: p.x, y: wrap(p.y - sy * p.z * 0.45, h), z: p.z };
-    });
-    for (let i = 0; i < pos.length; i++) {
-      const p = pos[i];
-      ctx.fillStyle = "rgba(0,240,255," + (0.25 + p.z * 0.55) + ")";
-      const sz = 1 + p.z * 1.8;
-      ctx.fillRect(p.x, p.y, sz, sz);
-      for (let j = i + 1; j < pos.length; j++) {
-        const q = pos[j], d = Math.hypot(p.x - q.x, p.y - q.y);
-        if (d < 130) {
-          ctx.strokeStyle = "rgba(0,240,255," + (0.1 * (1 - d / 130)) + ")";
-          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
-        }
-      }
-    }
-  }
-
-  function frame() {
-    pts.forEach(function (p) {
-      p.x = wrap(p.x + p.vx, w);
-      p.y = wrap(p.y + p.vy, h);
-    });
-    draw();
-    requestAnimationFrame(frame);
-  }
-
-  window.addEventListener("resize", function () { resize(); draw(); });
-  resize();
-  if (reduce) { draw(); window.addEventListener("scroll", draw, { passive: true }); }
-  else frame();
-})();
 
 /* ---------- Small helpers for the engine monitor ---------- */
 const GH_URL = "https://github.com/" + GITHUB_USER;
@@ -95,7 +41,7 @@ function ago(iso) {
 }
 function repoUrl(name) { return SAFE_NAME.test(name) ? GH_URL + "/" + name : GH_URL; }
 
-/* ---------- 2. Links: Roblox group, Discord, GitHub ---------- */
+/* ---------- 1. Links: Roblox group, Discord, GitHub ---------- */
 (function () {
   function setHref(id, href) { const a = document.getElementById(id); if (a && href) a.href = href; }
   setHref("link-roblox", GROUP_URL);
@@ -112,7 +58,7 @@ function repoUrl(name) { return SAFE_NAME.test(name) ? GH_URL + "/" + name : GH_
   if (/^https:\/\/(discord\.gg|discord\.com\/invite)\/[A-Za-z0-9_-]+$/.test(d)) setHref("link-discord", d);
 })();
 
-/* ---------- 3. Recent public GitHub activity (real events, each one linked) ---------- */
+/* ---------- 2. Recent public GitHub activity (real events, each one linked) ---------- */
 (function () {
   const box = document.getElementById("activity-log");
   if (!box) return;
@@ -150,14 +96,14 @@ function repoUrl(name) { return SAFE_NAME.test(name) ? GH_URL + "/" + name : GH_
     .catch(function () { box.textContent = "Activity unavailable right now."; });
 })();
 
-/* ---------- 4. Studio-session row (no live feed connected) ---------- */
+/* ---------- 3. Studio-session row (no live feed connected) ---------- */
 (function () {
   const s = document.getElementById("studio-status"), a = document.getElementById("studio-activity");
   if (s) { s.textContent = "NOT CONNECTED"; s.className = "status-idle"; }
   if (a) a.textContent = "No live session feed";
 })();
 
-/* ---------- 5. GitHub summary line (public API, cached 10 min) ---------- */
+/* ---------- 4. GitHub summary line (public API, cached 10 min) ---------- */
 (function () {
   const el = document.getElementById("gh-activity");
   if (!el) return;
@@ -186,7 +132,7 @@ function repoUrl(name) { return SAFE_NAME.test(name) ? GH_URL + "/" + name : GH_
     .catch(function () { el.textContent = "GitHub: activity unavailable right now"; });
 })();
 
-/* ---------- 6. Roblox group member count (via relay) ---------- */
+/* ---------- 5. Roblox group member count (via relay) ---------- */
 (function () {
   const link = document.getElementById("member-link");
   if (!link || !RELAY_URL || !GROUP_OK) return;
