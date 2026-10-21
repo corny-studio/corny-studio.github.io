@@ -75,6 +75,7 @@
         .hint { font: 0.64rem var(--mono); color: var(--faint); }
         .badge { font: 700 0.58rem var(--mono); letter-spacing: 0.8px; text-transform: uppercase; border-radius: 20px; padding: 2px 8px; margin-left: 8px; border: 1px solid currentColor; }
         .badge.on { color: var(--ok); } .badge.shadow { color: var(--faint); } .badge.all { color: var(--cyan); }
+        .badge.paused { color: var(--warn); border-color: rgba(245,184,61,0.5); }
         .tag { font: 0.6rem var(--mono); border: 1px solid var(--line2); color: var(--dim); border-radius: 4px; padding: 1px 5px; margin-left: 6px; }
 
         #daily-chart { width: 100%; height: 150px; display: block; margin-bottom: 8px; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; }
@@ -144,6 +145,7 @@
         <nav class="tabs" aria-label="Bots sections">
             <button id="tabbtn-paper" class="tabbtn active" type="button">Paper ledger</button>
             <button id="tabbtn-backtest" class="tabbtn" type="button">Backtest</button>
+            <button id="tabbtn-report" class="tabbtn" type="button">Trade report</button>
             <button id="tabbtn-setup" class="tabbtn" type="button">Connect TradingView</button>
         </nav>
 
@@ -153,9 +155,11 @@
             <div class="row" style="margin-bottom:10px;flex-wrap:wrap">
                 <span id="active-note" class="note" style="margin:0;flex:1;min-width:220px"></span>
                 <button id="count-all" class="btn small" type="button" hidden>Count every bot</button>
+                    <button id="pause-all" class="btn small" type="button">Pause all</button>
             </div>
             <div class="scroll"><table id="bots-table"></table></div>
             <p class="note">You choose which strategy is <b>active</b>: only its P&amp;L counts in your headline numbers. Every other strategy keeps running as a <b>shadow</b> so you can compare fairly, and switching never loses a position. Open positions are marked at the last alert price, not a live quote.</p>
+            <p class="note"><b>Pause</b> stops a bot opening new paper trades: its alerts still arrive, but only fills that close what it already holds count. If TradingView is holding a trade the bot skipped, the bot waits until TradingView is flat again, so a later exit can never open a wrong position. <b>Resync</b> closes the bot's paper position at the last price and follows TradingView again. This is the paper ledger only: pausing here does not stop the TradingView alert itself.</p>
         </section>
 
 <div class="grid2">
@@ -263,6 +267,19 @@
         </section>
         </div>
 
+        <div id="tab-report" class="pane" hidden>
+            <section class="card">
+                <h2>Trade report <small>drop in TradingView's trade list</small></h2>
+                <p class="note">In TradingView's Strategy Tester open <b>List of trades</b> and click the download icon. Load that CSV here for a breakdown by long and short, by year and by how trades ended, how much of the profit came from a few trades, and how big a typical stop-out really is. It is read in your browser: nothing is uploaded or stored.</p>
+                <div class="fields">
+                    <label>Trade list CSV<input id="rp-file" type="file" accept=".csv,text/csv,text/plain"></label>
+                    <label>Account size for the risk figures ($)<input id="rp-capital" type="number" value="10000" min="100" step="100"></label>
+                </div>
+                <p id="rp-status" class="note"></p>
+            </section>
+            <div id="rp-out"></div>
+        </div>
+
         <div id="tab-setup" class="pane" hidden>
 <section class="card">
             <h2>Connect TradingView</h2>
@@ -300,7 +317,7 @@
                         <textarea id="hook-msg" readonly aria-label="Alert message"></textarea>
                     </label>
                     <div class="actions" style="margin-top:8px"><button id="copy-msg" class="btn" type="button">Copy message</button></div>
-                    <p class="note">The message holds your password. Treat it like one: anyone who has it can post fake fills.</p>
+                    <p class="note">The message holds your password. Treat it like one: anyone who has it can post fake fills. It also carries <b>ps</b>, TradingView's own position after each fill, so Pause and Resume can stay in step with the strategy.</p>
                 </div>
 
                 <div class="step">
@@ -327,5 +344,6 @@
     <script src="bt-engine.js"></script>
     <script src="bots.js"></script>
     <script src="backtest.js"></script>
+    <script src="report.js"></script>
 </body>
 </html>
