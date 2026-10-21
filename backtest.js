@@ -69,6 +69,10 @@
     { g: "details", key: "vwFast", label: "VWAP strategy fast EMA", int: true, min: 2, max: 500 },
     { g: "details", key: "vwSlow", label: "VWAP strategy slow EMA", int: true, min: 3, max: 1000 },
     { g: "details", key: "vwapSession", label: "VWAP restarts each (utc = calendar day, ny18 = futures day at 6pm New York)", type: "select", options: [["utc", "UTC day (crypto)"], ["ny18", "Futures day (6pm New York)"]] },
+    { g: "details", key: "tFast", label: "Triple EMA / EMA + MACD: fast EMA", int: true, min: 2, max: 500 },
+    { g: "details", key: "tMid", label: "Triple EMA / EMA + MACD / EMA Regime: middle EMA", int: true, min: 3, max: 800 },
+    { g: "details", key: "tSlow", label: "Triple EMA / EMA Regime: slow EMA", int: true, min: 4, max: 1000 },
+    { g: "details", key: "regLen", label: "EMA Regime: long-term EMA (trend filter)", int: true, min: 10, max: 1500 },
     { g: "details", key: "fastLen", label: "Fast EMA", int: true, min: 2, max: 500 },
     { g: "details", key: "slowLen", label: "Slow EMA", int: true, min: 3, max: 1000 },
     { g: "details", key: "rsiLen", label: "RSI length", int: true, min: 2, max: 200 },
@@ -86,6 +90,11 @@
     { g: "hours", key: "sessEnd", label: "Window ends (New York hour)", min: 0, max: 24, step: 0.25 },
     { g: "hours", key: "flatAtEnd", label: "Close the trade when the window ends", type: "check" },
 
+    { g: "filters", key: "useADX", label: "Only enter when ADX shows a trend", type: "check" },
+    { g: "filters", key: "adxLen", label: "ADX length", int: true, min: 2, max: 100 },
+    { g: "filters", key: "adxMin", label: "...minimum ADX to allow an entry", min: 5, max: 60, step: 1 },
+    { g: "filters", key: "maxRiskPct", label: "Skip a trade if one contract risks more than this % of equity (0 = off)", min: 0, max: 50, step: 0.5 },
+
     { g: "protect", key: "useBE", label: "Move stop to break-even", type: "check" },
     { g: "protect", key: "beR", label: "...once price has moved this many x the risk", min: 0.2, max: 10, step: 0.1 },
     { g: "protect", key: "beBufATR", label: "Break-even buffer (x ATR, locks a tiny profit)", min: 0, max: 5, step: 0.05 },
@@ -101,6 +110,7 @@
   // Quick starting points for common markets. Futures need whole contracts and margin, not the full contract value.
   var PRESETS = [
     { id: "custom", label: "Custom (keep my numbers)" },
+    { id: "mgc4h", label: "MGC 4-hour long-only (the setup tested on your trade list)", v: { mode: "EMA VWAP", vwFast: 9, vwSlow: 21, atrLen: 14, stopMult: 2, rr: 2, riskPct: 1, allowShort: false, pv: 10, wholeUnits: true, maxLeverage: 10, feePct: 0.005, vwapSession: "ny18", useADX: false, maxRiskPct: 0, useSession: false } },
     { id: "crypto", label: "Crypto spot (Coinbase)", v: { pv: 1, wholeUnits: false, maxLeverage: 1, feePct: 0.1, vwapSession: "utc" } },
     { id: "mgc", label: "MGC micro gold futures (10 oz)", v: { pv: 10, wholeUnits: true, maxLeverage: 10, feePct: 0.005, vwapSession: "ny18" } },
     { id: "mes", label: "MES micro S&P 500 futures", v: { pv: 5, wholeUnits: true, maxLeverage: 10, feePct: 0.005, vwapSession: "ny18" } },
@@ -123,6 +133,9 @@
     if (P.vwFast >= P.vwSlow) return { error: "The VWAP strategy's fast EMA must be shorter than its slow EMA." };
     if (P.macdFast >= P.macdSlow) return { error: "MACD fast length must be shorter than the slow length." };
     if (P.rsiBuy >= P.rsiSell) return { error: "The oversold level must be below the overbought level." };
+    if (P.tFast >= P.tMid) return { error: "The triple-EMA fast length must be shorter than its middle length." };
+    if (P.tMid >= P.tSlow) return { error: "The triple-EMA middle length must be shorter than its slow length." };
+    if (P.regLen <= P.tSlow) return { error: "The EMA Regime long-term EMA must be longer than the slow EMA." };
     if (P.useSession && P.sessStart === P.sessEnd) return { error: "The trading window can't start and end at the same time." };
     return { P: P };
   }
@@ -131,8 +144,11 @@
 
   // The settings to type into the TradingView script so it matches this backtest
   function tvSettings(P) {
-    var L = ["CORNY Multi-Strategy v4: set these in the script's Inputs tab", "", "Strategy: " + P.mode];
+    var L = ["CORNY Multi-Strategy v5: set these in the script's Inputs tab", "", "Strategy: " + P.mode];
     if (P.mode === "EMA VWAP") L.push("VWAP strategy fast EMA: " + P.vwFast, "VWAP strategy slow EMA: " + P.vwSlow, "(use an intraday chart: VWAP restarts every session)");
+    if (P.mode === "Triple EMA") L.push("Triple EMA fast: " + P.tFast, "Triple EMA middle: " + P.tMid, "Triple EMA slow: " + P.tSlow);
+    if (P.mode === "EMA Regime") L.push("Triple EMA middle: " + P.tMid, "Triple EMA slow: " + P.tSlow, "EMA Regime long-term EMA: " + P.regLen);
+    if (P.mode === "EMA + MACD") L.push("Triple EMA fast: " + P.tFast, "Triple EMA middle: " + P.tMid, "MACD fast length: " + P.macdFast, "MACD slow length: " + P.macdSlow, "MACD signal length: " + P.macdSig);
     if (P.mode === "EMA Trend") L.push("Fast EMA: " + P.fastLen, "Slow EMA: " + P.slowLen);
     if (P.mode === "RSI Mean Reversion") L.push("RSI length: " + P.rsiLen, "Oversold level (buy when RSI climbs back above): " + P.rsiBuy, "Overbought level (sell when RSI drops back below): " + P.rsiSell);
     if (P.mode === "MACD Momentum") L.push("MACD fast length: " + P.macdFast, "MACD slow length: " + P.macdSlow, "MACD signal length: " + P.macdSig);
@@ -142,20 +158,24 @@
     L.push("", "ATR length: " + P.atrLen, "Stop distance (x ATR): " + P.stopMult, "Reward : Risk (final target): " + P.rr,
            "Risk per trade (% of equity): " + P.riskPct, "Allow shorts: " + (P.allowShort ? "on" : "off"),
            "Slippage per market/stop order (% of price): " + P.slipPct, "");
+    L.push("Only enter when ADX shows a trend: " + (P.useADX ? "on (ADX length " + P.adxLen + ", minimum " + P.adxMin + ")" : "off"));
+    L.push("Skip a trade if one contract risks more than this % of equity: " + (P.maxRiskPct > 0 ? P.maxRiskPct : "0 (off)"));
     L.push("Only open trades inside this window (New York time): " + (P.useSession ? "on" : "off"));
     if (P.useSession) L.push("Window: " + hhmm(P.sessStart) + "-" + hhmm(P.sessEnd), "Close the trade when the window ends: " + (P.flatAtEnd ? "on" : "off"));
     L.push("Move stop to break-even: " + (P.useBE ? "on (after " + P.beR + "x risk, buffer " + P.beBufATR + " ATR)" : "off"));
     L.push("Trail the stop: " + (P.useTrail ? "on (starts at " + P.trailStart + "x risk, " + P.trailATR + " ATR behind" + (P.noTarget ? ", no fixed target" : "") + ")" : "off"));
     L.push("Take partial profit: " + (P.usePartial ? "on (" + P.partialPct + "% at " + P.partialR + "x risk)" : "off"));
     L.push("", "Also in TradingView: Settings > Properties > Initial capital " + P.capital + ", Commission " + P.feePct + "%.",
-           "Max leverage and whole-contracts are only in this backtester; TradingView uses its own margin settings.");
+           "Margin for long and short: " + (Math.round(1000 / P.maxLeverage) / 10) + "% (matches Max leverage " + P.maxLeverage + "x). If the margin is too high for the contract size TradingView opens no trades at all, and the Strategy report is empty.",
+           "Whole contracts are handled by the script itself on futures.");
     return L.join("\n");
   }
 
   function warnings(P, m, be, n) {
     var w = [];
     if (m.skipped > 0) w.push(m.skipped + " signal" + (m.skipped === 1 ? " was" : "s were") + " skipped because even one " + (P.wholeUnits ? "contract" : "unit") + " costs more than your money allows at " + P.maxLeverage + "x leverage. Raise Max leverage or Starting money (futures only need a small margin, so a cap around 10x is typical).");
-    if (m.trades === 0 && m.skipped === 0) w.push("No trades closed. Try more bars or a different strategy.");
+    if (m.riskSkipped > 0) w.push(m.riskSkipped + " signal" + (m.riskSkipped === 1 ? " was" : "s were") + " skipped by your risk cap (one " + (P.wholeUnits ? "contract" : "unit") + " would have risked more than " + P.maxRiskPct + "% of equity).");
+    if (m.trades === 0 && m.skipped === 0 && !m.riskSkipped) w.push("No trades closed. Try more bars or a different strategy.");
     if (m.trades < 50) w.push("Only " + m.trades + " closed trades. That is too few to trust: load more bars or use a smaller timeframe.");
     if (m.net <= 0) w.push("It loses money at " + P.slipPct + "% slippage" + (be.text ? " (break-even is " + be.text + ")" : "") + ".");
     else if (be.value !== null && be.value < 0.3) w.push("It stops making money below 0.3% slippage, which real trading easily costs. Treat it with suspicion.");
@@ -179,7 +199,7 @@
     PRESETS.forEach(function (p) { var op = el("option", "", p.label); op.value = p.id; ps.appendChild(op); });
     ps.value = "custom"; pw.appendChild(ps); main.appendChild(pw); controls.preset = ps;
     ps.addEventListener("change", function () { applyPreset(ps.value); });
-    [["details", "Strategy details (lengths and levels for each strategy)"], ["hours", "Trading hours (only trade inside a New York time window)"], ["protect", "Profit protection (break-even, trailing stop, partial profit)"]].forEach(function (g) {
+    [["details", "Strategy details (lengths and levels for each strategy)"], ["hours", "Trading hours (only trade inside a New York time window)"], ["filters", "Entry filter and risk cap (optional, off by default)"], ["protect", "Profit protection (break-even, trailing stop, partial profit)"]].forEach(function (g) {
       var d = el("details"); d.appendChild(el("summary", "", g[1]));
       var grid = el("div", "formgrid"); d.appendChild(grid); form.appendChild(d); boxes[g[0]] = grid;
     });
@@ -428,6 +448,12 @@
     "EMA VWAP": [{ key: "vwFast", label: "VWAP fast EMA", from: 5, to: 13, step: 2, int: true }, { key: "vwSlow", label: "VWAP slow EMA", from: 12, to: 30, step: 3, int: true },
                  { key: "stopMult", label: "Stop (x ATR)", from: 1.5, to: 3, step: 0.5 }, { key: "rr", label: "Reward : Risk", from: 1.5, to: 3, step: 0.5 }],
     "Breakout": [{ key: "brkLen", label: "Breakout lookback", from: 10, to: 50, step: 10, int: true }, { key: "stopMult", label: "Stop (x ATR)", from: 1.5, to: 3, step: 0.5 }, { key: "rr", label: "Reward : Risk", from: 1.5, to: 3, step: 0.5 }],
+    "Triple EMA": [{ key: "tFast", label: "Fast EMA", from: 5, to: 13, step: 4, int: true }, { key: "tMid", label: "Middle EMA", from: 15, to: 27, step: 6, int: true },
+                   { key: "tSlow", label: "Slow EMA", from: 40, to: 70, step: 15, int: true }, { key: "stopMult", label: "Stop (x ATR)", from: 1.5, to: 3, step: 0.5 }],
+    "EMA Regime": [{ key: "tMid", label: "Middle EMA (crosses the slow one)", from: 15, to: 27, step: 6, int: true }, { key: "tSlow", label: "Slow EMA", from: 40, to: 70, step: 15, int: true },
+                   { key: "regLen", label: "Long-term EMA filter", from: 100, to: 300, step: 100, int: true }, { key: "stopMult", label: "Stop (x ATR)", from: 1.5, to: 3, step: 0.5 }],
+    "EMA + MACD": [{ key: "tFast", label: "Fast EMA", from: 5, to: 13, step: 4, int: true }, { key: "tMid", label: "Middle EMA", from: 15, to: 27, step: 6, int: true },
+                   { key: "macdFast", label: "MACD fast", from: 8, to: 16, step: 4, int: true }, { key: "macdSlow", label: "MACD slow", from: 20, to: 34, step: 7, int: true }],
     "EMA Trend": [{ key: "fastLen", label: "Fast EMA", from: 10, to: 30, step: 5, int: true }, { key: "slowLen", label: "Slow EMA", from: 40, to: 100, step: 20, int: true },
                   { key: "stopMult", label: "Stop (x ATR)", from: 1.5, to: 3, step: 0.5 }, { key: "rr", label: "Reward : Risk", from: 1.5, to: 3, step: 0.5 }],
     "RSI Mean Reversion": [{ key: "rsiLen", label: "RSI length", from: 7, to: 21, step: 7, int: true }, { key: "rsiBuy", label: "Oversold level", from: 20, to: 35, step: 5 },
@@ -443,7 +469,7 @@
   function median(a) { if (!a.length) return 0; var s = a.slice().sort(function (x, y) { return x - y; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
 
   // results: [{ over, a: {train, test}, b: {train, test} }]   share = the tuning share in percent (70 = 70%)
-  function summarizeOpt(results, minTrades, objKind, capital, share) {
+  function summarizeOpt(results, minTrades, objKind, capital, share, bars) {
     var valid = results.filter(function (x) { return x.a.train.trades >= minTrades && x.b.train.trades >= minTrades; });
     var out = { tried: results.length, valid: valid.length, top: [], lines: [], verdict: "" };
     if (!valid.length) { out.verdict = "No setting reached " + minTrades + " trades in both tuning periods. Lower the minimum, or load more data."; return out; }
@@ -462,10 +488,11 @@
     out.lines.push("Every setting gets two out-of-sample checks. Test A: tuned on the first " + Math.round(share) + "% of the data, tested on the last " + Math.round(100 - share) + "%. Test B: tuned on the last " + Math.round(share) + "%, tested on the first " + Math.round(100 - share) + "%.");
     out.lines.push(Math.round(pctBoth) + "% of the settings were profitable in BOTH tests, and the median setting's weaker test made " + money(medWorst) + ".");
     out.lines.push(held + " of the top " + out.top.length + " by tuning score stayed profitable in both tests.");
-    if (pctBoth >= 50 && medWorst > 0) out.verdict = "Good sign: most settings, not just the best ones, made money on data they were never tuned on, in both directions. The edge looks broad rather than lucky. Still confirm on a second date range before trusting it.";
+    if (pctBoth >= 70 && medWorst > 0) out.verdict = "Good sign: most settings, not just the best ones, made money on data they were never tuned on, in both directions. The edge looks broad rather than lucky. Still confirm on a second date range before trusting it.";
     else if (pctBoth < 25 || medWorst <= 0) out.verdict = "Warning: most settings fail in at least one of the two out-of-sample tests. A great-looking top result is probably luck, so don't trade it.";
     else out.verdict = "Mixed: about half the settings hold up. Treat any result as weak evidence.";
     if (medTrades < 10) out.verdict += " The test periods had very few trades (median " + Math.round(medTrades) + "), so these numbers are noisy: load more data.";
+    if (bars > 0 && bars < 15000) out.lines.push("Only " + bars.toLocaleString() + " bars of data. That is not much: on random data this check still gave a false Good sign about 1 time in 20 and missed most modest real edges. Use it to reject bad settings, not to prove good ones, and confirm on a different date range.");
     return out;
   }
   window.BtUI.summarizeOpt = summarizeOpt;
@@ -587,7 +614,7 @@
       if (!done) { opt.els.status.textContent = "Cancelled after " + results.length + " of " + combos.length + " settings."; return; }
       opt.els.status.textContent = "Done in " + ((Date.now() - started) / 1000).toFixed(1) + " s.";
       var base = BT.evalFolds(candles, P, {}, share, warm);
-      var sum = summarizeOpt(results, minTrades, objKind, P.capital, share * 100);
+      var sum = summarizeOpt(results, minTrades, objKind, P.capital, share * 100, candles.length);
       showOpt(P, sum, base, objKind, share * 100);
     }
     (function step() {
