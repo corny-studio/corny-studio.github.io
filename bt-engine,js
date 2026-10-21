@@ -79,6 +79,26 @@
     return rma(tr, len);
   }
 
+  // ADX exactly as Pine's ta.dmi(len, len): Wilder smoothing of +DM, -DM and true range, then of |+DI - -DI| / (+DI + -DI)
+  function adxOf(c, len) {
+    var n = c.length, tr = fill(n, NA), pdm = fill(n, NA), mdm = fill(n, NA);
+    for (var i = 0; i < n; i++) {
+      tr[i] = i === 0 ? c[i].h - c[i].l : Math.max(c[i].h - c[i].l, Math.abs(c[i].h - c[i - 1].c), Math.abs(c[i].l - c[i - 1].c));
+      if (i > 0) {
+        var up = c[i].h - c[i - 1].h, down = -(c[i].l - c[i - 1].l);
+        pdm[i] = up > down && up > 0 ? up : 0; mdm[i] = down > up && down > 0 ? down : 0;
+      }
+    }
+    var trur = rma(tr, len), pr = rma(pdm, len), mr = rma(mdm, len), dx = fill(n, NA);
+    for (var j = 0; j < n; j++) {
+      if (isn(trur[j]) || isn(pr[j]) || isn(mr[j]) || trur[j] === 0) continue;
+      var plus = 100 * pr[j] / trur[j], minus = 100 * mr[j] / trur[j], sum = plus + minus;
+      dx[j] = Math.abs(plus - minus) / (sum === 0 ? 1 : sum);
+    }
+    var a = rma(dx, len);
+    return a.map(function (v) { return isn(v) ? NA : 100 * v; });
+  }
+
   function macd(src, fast, slow, sig) {
     var f = ema(src, fast), s = ema(src, slow), line = fill(src.length, NA);
     for (var i = 0; i < src.length; i++) if (!isn(f[i]) && !isn(s[i])) line[i] = f[i] - s[i];
@@ -150,18 +170,20 @@
   }
 
   /* ================= Parameters ================= */
-  var MODES = ["EMA VWAP", "Breakout", "EMA Trend", "RSI Mean Reversion", "MACD Momentum", "Bollinger Bounce"];
+  var MODES = ["EMA VWAP", "Breakout", "Triple EMA", "EMA Regime", "EMA + MACD", "EMA Trend", "RSI Mean Reversion", "MACD Momentum", "Bollinger Bounce"];
 
   function defaults() {
     return {
       mode: "EMA VWAP",
-      vwFast: 9, vwSlow: 15, vwapSession: "utc",
+      vwFast: 9, vwSlow: 21, vwapSession: "utc",
       fastLen: 20, slowLen: 50, rsiLen: 14, rsiBuy: 30, rsiSell: 70, macdFast: 12, macdSlow: 26, macdSig: 9,
       bbLen: 20, bbMult: 2.0, trendLen: 200, brkLen: 20,
       atrLen: 14, stopMult: 2.0, rr: 2.0, riskPct: 1.0, allowShort: false,
       useBE: false, beR: 1.0, beBufATR: 0.1, useTrail: false, trailStart: 1.5, trailATR: 2.0, noTarget: false,
       usePartial: false, partialR: 1.0, partialPct: 50,
       useSession: false, sessStart: 8, sessEnd: 15, flatAtEnd: false, tradeFrom: 0,
+      useADX: false, adxLen: 14, adxMin: 25, maxRiskPct: 0,
+      tFast: 9, tMid: 21, tSlow: 55, regLen: 200,
       slipPct: 3.0, feePct: 0.05, capital: 10000, pv: 1, wholeUnits: false, maxLeverage: 1
     };
   }
@@ -172,11 +194,15 @@
     var close = c.map(function (x) { return x.c; }), high = c.map(function (x) { return x.h; }), low = c.map(function (x) { return x.l; });
     var all = !mode, ind = { t: c.map(function (x) { return x.t; }), close: close, atr: atrOf(c, P.atrLen) };
     if (all || mode === "EMA VWAP") { ind.vwFast = ema(close, P.vwFast); ind.vwSlow = ema(close, P.vwSlow); ind.vwap = vwapOf(c, P.vwapSession); }
+    if (all || mode === "Triple EMA" || mode === "EMA + MACD") { ind.t1 = ema(close, P.tFast); ind.t2 = ema(close, P.tMid); }
+    if (all || mode === "Triple EMA" || mode === "EMA Regime") ind.t3 = ema(close, P.tSlow);
+    if (all || mode === "EMA Regime") { ind.reg = ema(close, P.regLen); if (!ind.t2) ind.t2 = ema(close, P.tMid); }
     if (all || mode === "EMA Trend") { ind.fast = ema(close, P.fastLen); ind.slow = ema(close, P.slowLen); }
     if (all || mode === "RSI Mean Reversion") { ind.rsi = rsi(close, P.rsiLen); ind.rsiBuyLine = fill(c.length, P.rsiBuy); ind.rsiSellLine = fill(c.length, P.rsiSell); }
     if (all || mode === "RSI Mean Reversion" || mode === "MACD Momentum" || mode === "Bollinger Bounce") ind.trend = ema(close, Math.max(P.trendLen, 1));
-    if (all || mode === "MACD Momentum") { var m = macd(close, P.macdFast, P.macdSlow, P.macdSig); ind.macdLine = m.line; ind.macdSignal = m.signal; }
+    if (all || mode === "MACD Momentum" || mode === "EMA + MACD") { var m = macd(close, P.macdFast, P.macdSlow, P.macdSig); ind.macdLine = m.line; ind.macdSignal = m.signal; }
     if (all || mode === "Bollinger Bounce") { var bands = bb(close, P.bbLen, P.bbMult); ind.bbUp = bands.up; ind.bbLo = bands.lo; }
+    if (all || P.useADX) ind.adx = adxOf(c, P.adxLen);
     if (all || mode === "Breakout") { ind.hiPrev = shift1(highest(high, P.brkLen)); ind.loPrev = shift1(lowest(low, P.brkLen)); }
     return ind;
   }
@@ -191,13 +217,29 @@
         L[i] = crossover(ind.vwFast, ind.vwSlow, i) && okV && ind.close[i] > ind.vwap[i];
         S[i] = crossunder(ind.vwFast, ind.vwSlow, i) && okV && ind.close[i] < ind.vwap[i];
       }
+      else if (mode === "Triple EMA") {
+        // 9 crosses 21 while 21 is already on the right side of 55: two averages agree, so the cross is with the trend
+        L[i] = crossover(ind.t1, ind.t2, i) && ind.t2[i] > ind.t3[i];
+        S[i] = crossunder(ind.t1, ind.t2, i) && ind.t2[i] < ind.t3[i];
+      }
+      else if (mode === "EMA Regime") {
+        // 21 crosses 55 only when both averages and price are on the right side of the 200
+        L[i] = crossover(ind.t2, ind.t3, i) && ind.t2[i] > ind.reg[i] && ind.t3[i] > ind.reg[i] && ind.close[i] > ind.reg[i];
+        S[i] = crossunder(ind.t2, ind.t3, i) && ind.t2[i] < ind.reg[i] && ind.t3[i] < ind.reg[i] && ind.close[i] < ind.reg[i];
+      }
+      else if (mode === "EMA + MACD") {
+        // two crossover systems must agree: either one crossing while the other already points the same way
+        L[i] = (crossover(ind.t1, ind.t2, i) && ind.macdLine[i] > ind.macdSignal[i]) || (crossover(ind.macdLine, ind.macdSignal, i) && ind.t1[i] > ind.t2[i]);
+        S[i] = (crossunder(ind.t1, ind.t2, i) && ind.macdLine[i] < ind.macdSignal[i]) || (crossunder(ind.macdLine, ind.macdSignal, i) && ind.t1[i] < ind.t2[i]);
+      }
       else if (mode === "EMA Trend") { L[i] = crossover(ind.fast, ind.slow, i); S[i] = crossunder(ind.fast, ind.slow, i); }
       else if (mode === "RSI Mean Reversion") { L[i] = crossover(ind.rsi, ind.rsiBuyLine, i) && up(i); S[i] = crossunder(ind.rsi, ind.rsiSellLine, i) && dn(i); }
       else if (mode === "MACD Momentum") { L[i] = crossover(ind.macdLine, ind.macdSignal, i) && up(i); S[i] = crossunder(ind.macdLine, ind.macdSignal, i) && dn(i); }
       else if (mode === "Bollinger Bounce") { L[i] = crossover(ind.close, ind.bbLo, i) && up(i); S[i] = crossunder(ind.close, ind.bbUp, i) && dn(i); }
       else { L[i] = crossover(ind.close, ind.hiPrev, i); S[i] = crossunder(ind.close, ind.loPrev, i); }
     }
-    return { long: L, short: S, win: P.useSession ? windowFlags(ind.t, P.sessStart, P.sessEnd) : null };
+    return { long: L, short: S, win: P.useSession ? windowFlags(ind.t, P.sessStart, P.sessEnd) : null,
+             gate: P.useADX ? ind.adx.map(function (v) { return !isn(v) && v >= P.adxMin; }) : null };
   }
 
   /* ================= Simulation ================= */
@@ -205,7 +247,7 @@
     var n = c.length, trades = [], equity = fill(n, P.capital), pv = P.pv;
     var slip = P.slipPct / 100, comm = P.feePct / 100;
     var cash = P.capital, pos = null, pend = null, pendClose = false, pendFlat = false, stopD = NA;
-    var fees = 0, slipPaid = 0, skipped = 0, EPS = 1e-12;
+    var fees = 0, slipPaid = 0, skipped = 0, riskSkipped = 0, EPS = 1e-12;
 
     function eqAt(price) { return cash + (pos ? (price - pos.entry) * pos.dir * pos.qty * pv : 0); }
 
@@ -271,7 +313,7 @@
       var sL = sig.long[i], sS = sig.short[i];
       if (i < (P.tradeFrom || 0)) { sL = false; sS = false; }       // warm-up bars: indicators run, no trading
       if ((sL || sS) && !isn(a)) stopD = a * P.stopMult;
-      var inWin = !sig.win || sig.win[i];                           // entries only inside your trading hours
+      var inWin = (!sig.win || sig.win[i]) && (!sig.gate || sig.gate[i]);   // entries only inside your trading hours and when ADX is strong enough (exits are never blocked)
       if (i < n - 1 && !isn(a)) {
         if (((sL && inWin) || (sS && P.allowShort && inWin)) && !isn(stopD)) {
           var dir = sL ? 1 : -1, eq = eqAt(b.c);
@@ -279,7 +321,8 @@
             var sd = a * P.stopMult, raw = (eq * P.riskPct / 100) / (sd * pv), q2 = P.wholeUnits ? Math.max(1, Math.floor(raw)) : raw;
             var cap = (eq * P.maxLeverage) / (b.c * pv);
             q2 = P.wholeUnits ? Math.min(q2, Math.floor(cap)) : Math.min(q2, cap);
-            if (q2 > 0 && isFinite(q2)) pend = { dir: dir, qty: q2, sigClose: b.c, stopDist: sd };
+            if (P.maxRiskPct > 0 && sd * pv > eq * P.maxRiskPct / 100) riskSkipped++;   // one unit would risk more than your cap
+            else if (q2 > 0 && isFinite(q2)) pend = { dir: dir, qty: q2, sigClose: b.c, stopDist: sd };
             else skipped++;     // one unit costs more than your money allows at this leverage
           } else skipped++;
         } else if (sS && !P.allowShort) {
@@ -306,7 +349,7 @@
 
       equity[i] = eqAt(b.c);
     }
-    return { trades: trades, equity: equity, open: pos ? { dir: pos.dir, qty: pos.qty, entry: pos.entry } : null, fees: fees, slipPaid: slipPaid, skipped: skipped };
+    return { trades: trades, equity: equity, open: pos ? { dir: pos.dir, qty: pos.qty, entry: pos.entry } : null, fees: fees, slipPaid: slipPaid, skipped: skipped, riskSkipped: riskSkipped };
   }
 
   /* ================= Results ================= */
@@ -320,7 +363,7 @@
       net: net, returnPct: net / P.capital * 100, trades: t.length, wins: wins, winRate: t.length ? wins / t.length * 100 : NA,
       profitFactor: gl > 0 ? gw / gl : (gw > 0 ? Infinity : NA), avgWin: wins ? gw / wins : 0, avgLoss: (t.length - wins) ? -gl / (t.length - wins) : 0,
       maxDD: maxDD, maxDDpct: maxDDpct, buyHoldPct: first ? (last / first - 1) * 100 : NA,
-      fees: res.fees, slipPaid: res.slipPaid, skipped: res.skipped || 0, finalEquity: res.equity.length ? res.equity[res.equity.length - 1] : P.capital, open: res.open
+      fees: res.fees, slipPaid: res.slipPaid, skipped: res.skipped || 0, riskSkipped: res.riskSkipped || 0, finalEquity: res.equity.length ? res.equity[res.equity.length - 1] : P.capital, open: res.open
     };
   }
 
@@ -386,7 +429,7 @@
   // segments. A segment may be given `from - w0` warm-up bars: its indicators are already warm, but it may not trade them.
   function segRun(c, sig, atr, P, w0, from, to) {
     var cs = c.slice(w0, to);
-    var sg = { long: sig.long.slice(w0, to), short: sig.short.slice(w0, to), win: sig.win ? sig.win.slice(w0, to) : null };
+    var sg = { long: sig.long.slice(w0, to), short: sig.short.slice(w0, to), win: sig.win ? sig.win.slice(w0, to) : null, gate: sig.gate ? sig.gate.slice(w0, to) : null };
     var Q = Object.assign({}, P, { tradeFrom: from - w0 });
     return metrics(cs, simulate(cs, sg, atr.slice(w0, to), Q), Q);
   }
@@ -450,5 +493,5 @@
 
   root.BT = { MODES: MODES, LADDER: LADDER, defaults: defaults, indicators: indicators, signals: signals, simulate: simulate, metrics: metrics,
               run: run, ladder: ladder, gridCombos: gridCombos, objectiveOf: objectiveOf, evalCombo: evalCombo, evalFolds: evalFolds, windowFlags: windowFlags, breakEven: breakEven, compare: compare, fromCoinbase: fromCoinbase, fromCsv: fromCsv,
-              ind: { vwap: vwapOf, ema: ema, rma: rma, sma: sma, stdev: stdev, rsi: rsi, atr: atrOf, macd: macd, bb: bb, highest: highest, lowest: lowest, crossover: crossover, crossunder: crossunder } };
+              ind: { adx: adxOf, vwap: vwapOf, ema: ema, rma: rma, sma: sma, stdev: stdev, rsi: rsi, atr: atrOf, macd: macd, bb: bb, highest: highest, lowest: lowest, crossover: crossover, crossunder: crossunder } };
 })(typeof window !== "undefined" ? window : globalThis);
