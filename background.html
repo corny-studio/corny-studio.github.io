@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Cosmic Background Pipeline v3</title>
+<title>Cosmic background</title>
 <style>
     :root {
         color-scheme: dark;
@@ -66,6 +66,9 @@
      tex-venus.jpg  tex-jupiter.jpg  tex-saturn.jpg  tex-saturn-ring.png  tex-uranus.jpg  tex-neptune.jpg
      tex-pluto.jpg  tex-pluto-height.jpg  tex-sun.jpg   (all equirectangular, 2:1)
      stars-catalog.json  ([[raDeg, decDeg, magnitude, B-V], ...], 100+ stars)    iss.glb  (NASA's ISS model)
+
+   As your portfolio's background: index.html shows this page in a fixed full-screen iframe and posts the scroll position to it, so the
+   tour follows your scrolling (top of page = Earth, bottom = Earth again) and resumes by itself after 8 seconds of stillness.
 
    Easter egg: a tiny American flag and lunar module stand at Tranquility Base on the Moon. Type  apollo  (or add ?flag=1, or call
    Cosmic.visitFlag()) and the camera flies down to them.
@@ -323,11 +326,12 @@ var TOUR_TOTAL = TOUR.reduce(function (s, t) { return s + t.hold + t.travel; }, 
 // How far the camera sits from each planet, in planet radii. Bigger means more of the planet and its surroundings in view.
 var CAMERA_FOV = 40;
 var STANDOFF = { earth: 10.5, mars: 11, jupiter: 9, saturn: 17, uranus: 12.5, neptune: 12.5, pluto: 13, mercury: 13, venus: 11 };   // for a 40 degree lens
+var STANDOFF_SCALE = 1.0;      // how far from each planet the camera stops, as a fraction of the distances above: 1 is as now, 0.8 is a fifth closer (planets look a quarter bigger)
 function radiusOf(id) { return bodyById(id).r; }
 
 var HOLD_SWING = 0.20, VIEW_ANGLE = 0.95;     // the camera swings 0.4 radians round the planet during a hold, centred on 0.95 from the Sun's direction
 function stopCam(id, ws, angle) {
-    var c = ws.pos[id], R = radiusOf(id), D = R * STANDOFF[id];
+    var c = ws.pos[id], R = radiusOf(id), D = R * STANDOFF[id] * STANDOFF_SCALE;
     var dir = rotY(vnorm(vscale(c, -1)), angle === undefined ? VIEW_ANGLE : angle);
     return { pos: vadd(vadd(c, vscale(dir, D)), [0, D * (id === "saturn" ? 0.30 : 0.22), 0]), look: c };
 }
@@ -1273,12 +1277,9 @@ void main() {
 
     // Every planet: physically lit in linear light, with a normal map, sunset-coloured sunlight at low sun,
     // sun glitter on the water, cloud shadows (Earth), ring shadows (Saturn), night-side city lights,
-    // and the velocity-based motion blur. The colours in the maps are treated as sRGB and linearised here.
+    // The colours in the maps are treated as sRGB and linearised here.
     planetVertex: `
-uniform float uVelocity;
-uniform vec3 uMotionView;
 varying vec2 vUv;
-varying float vBlurWeight;
 varying vec3 vWorldPos;
 varying vec3 vObjNormal;
 varying vec3 vCenter;
@@ -1287,12 +1288,7 @@ void main() {
     vObjNormal = normal;
     vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
     vCenter = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    vec3 viewNormal = normalize(normalMatrix * normal);
-    float facing = dot(viewNormal, normalize(uMotionView + vec3(0.00001)));
-    if (facing > 0.0) { mv.xyz += uMotionView * uVelocity * 1.6 * facing; }
-    vBlurWeight = uVelocity;
-    gl_Position = projectionMatrix * mv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`,
     planetFragment: GLSL_TONE + `
 uniform sampler2D uMap;
@@ -1321,23 +1317,33 @@ uniform float uSunPower;
 uniform float uTime;
 uniform float uLDR;
 uniform float uExpLDR;
+uniform mat4 modelMatrix;
 varying vec2 vUv;
-varying float vBlurWeight;
 varying vec3 vWorldPos;
 varying vec3 vObjNormal;
 varying vec3 vCenter;
+uniform float uDetail;
+uniform float uRpx;
+float dtlH(vec3 p) { p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3)); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float dtlN(vec3 x) {
+    vec3 i = floor(x); vec3 fr = fract(x); fr = fr * fr * (3.0 - 2.0 * fr);
+    float a = dtlH(i), b = dtlH(i + vec3(1.0, 0.0, 0.0)), c1 = dtlH(i + vec3(0.0, 1.0, 0.0)), d = dtlH(i + vec3(1.0, 1.0, 0.0));
+    float e = dtlH(i + vec3(0.0, 0.0, 1.0)), f1 = dtlH(i + vec3(1.0, 0.0, 1.0)), g1 = dtlH(i + vec3(0.0, 1.0, 1.0)), h = dtlH(i + vec3(1.0, 1.0, 1.0));
+    return mix(mix(mix(a, b, fr.x), mix(c1, d, fr.x), fr.y), mix(mix(e, f1, fr.x), mix(g1, h, fr.x), fr.y), fr.z);
+}
+// One octave of fine surface detail: a little grain in the colour and a little tilt in the surface. It fades out where its features
+// would be smaller than a pixel (uRpx is the planet's radius in pixels), so it never shimmers from far away.
+void dtlOct(vec3 No, float fq, float amp, inout float grain, inout vec3 g) {
+    float w = smoothstep(fq * 0.9, fq * 2.2, uRpx);
+    if (w < 0.01) { return; }
+    vec3 q = No * fq + vec3(fq * 0.37, fq * 0.11, fq * 0.53);
+    float n = dtlN(q);
+    vec3 gg = vec3(dtlN(q + vec3(0.6, 0.0, 0.0)) - n, dtlN(q + vec3(0.0, 0.6, 0.0)) - n, dtlN(q + vec3(0.0, 0.0, 0.6)) - n);
+    grain += (n - 0.5) * amp * w;
+    g += gg * amp * w;
+}
 void main() {
     vec4 c = texture2D(uMap, vUv);
-    if (vBlurWeight > 0.04) {
-        vec4 acc = vec4(0.0);
-        float inc = vBlurWeight * 0.012;
-        for (int i = 0; i < 10; i++) {
-            float o = float(i) * inc;
-            acc += texture2D(uMap, vUv - vec2(0.0, o));
-            acc += texture2D(uMap, vUv + vec2(0.0, o));
-        }
-        c = acc / 20.0;
-    }
     vec3 albedo = pow(c.rgb, vec3(2.2));
     albedo = mix(albedo, vec3(0.93), uAlphaLum);
     vec3 No = normalize(vObjNormal);
@@ -1349,6 +1355,18 @@ void main() {
     vec3 tn = nm.xyz * 2.0 - 1.0;
     vec3 Nb = normalize(T * tn.x + B * tn.y + No * tn.z);
     vec3 Nl = normalize(mix(No, Nb, uUseNormal));
+    if (uDetail > 0.01 && uAlphaMode < 0.5 && uRpx > 40.0) {
+        float land = 1.0 - c.a * uSpecAmt;
+        float grain = 0.0; vec3 dg = vec3(0.0);
+        dtlOct(No, 24.0, 0.55, grain, dg);
+        dtlOct(No, 56.0, 0.45, grain, dg);
+        dtlOct(No, 130.0, 0.35, grain, dg);
+        dtlOct(No, 320.0, 0.30, grain, dg);
+        dtlOct(No, 800.0, 0.25, grain, dg);
+        dg -= No * dot(dg, No);
+        albedo *= clamp(1.0 + grain * 0.9 * uDetail * land, 0.5, 1.6);
+        Nl = normalize(Nl + dg * 0.22 * uDetail * land);
+    }
     vec3 N = normalize(mat3(modelMatrix) * Nl);
     vec3 N0 = normalize(mat3(modelMatrix) * No);
     vec3 L = normalize(-vWorldPos);
@@ -1402,15 +1420,12 @@ void main() {
     // gas giants darken toward the edge
     float vd = max(dot(N0, V), 0.0);
     lit *= mix(1.0, 0.55 + 0.45 * sqrt(vd), uLimb);
-    lit += vec3(vBlurWeight * 0.02);
     float alpha = uAlphaMode > 0.5 ? mix(c.a, dot(c.rgb, vec3(0.3333)), uAlphaLum) : 1.0;
     gl_FragColor = vec4(ldrOut(lit, uLDR, uExpLDR), alpha);
 }`,
 
     // The plain lit planet shader. Used only if the premium one cannot compile on this graphics card.
     safeVertex: `
-uniform float uVelocity;
-uniform vec3 uMotionView;
 varying vec2 vUv;
 varying vec3 vWorldNormal;
 varying vec3 vWorldPos;
@@ -1418,11 +1433,7 @@ void main() {
     vUv = uv;
     vWorldNormal = normalize(mat3(modelMatrix) * normal);
     vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    vec3 viewNormal = normalize(normalMatrix * normal);
-    float facing = dot(viewNormal, normalize(uMotionView + vec3(0.00001)));
-    if (facing > 0.0) { mv.xyz += uMotionView * uVelocity * 1.6 * facing; }
-    gl_Position = projectionMatrix * mv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`,
     safeFragment: GLSL_TONE + `
 uniform sampler2D uMap;
@@ -1975,10 +1986,10 @@ var cores = navigator.hardwareConcurrency || 4, mem = navigator.deviceMemory || 
 var coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 var tier = qParam || (coarse ? "medium" : (maxTex >= 8192 && cores >= 8 && mem >= 8) ? "max" : cores >= 4 ? "high" : "medium");
 if (maxTex < 4096 && tier === "max") tier = "high";
-var RES_TABLE = { max: { big: 4096, mid: 2048, small: 1024 }, high: { big: 2048, mid: 1024, small: 1024 }, medium: { big: 1024, mid: 512, small: 512 } };
+var RES_TABLE = { max: { big: 4096, mid: 4096, small: 2048 }, high: { big: 2048, mid: 1024, small: 1024 }, medium: { big: 1024, mid: 512, small: 512 } };
 var RES = {};
 Object.keys(RES_TABLE[tier]).forEach(function (k) { RES[k] = Math.min(RES_TABLE[tier][k], maxTex); });
-var SEG = tier === "medium" ? 0.5 : 1;                         // sphere detail scale
+var SEG = tier === "medium" ? 0.5 : tier === "high" ? 0.8 : 1;       // sphere detail scale
 var REAL_ON = (window.CORNY_CONFIG && window.CORNY_CONFIG.cosmicRealTextures) || /[?&]real=1/.test(location.search);
 var MSAA = tier === "medium" ? 0 : 4;                          // anti-aliasing samples for the HDR buffer
 var veil = document.getElementById("veil");
@@ -2015,16 +2026,35 @@ var skyData = makeSky(tier === "medium" ? 40000 : 90000, 20261021, null);
 var starMat = new THREE.ShaderMaterial({ uniforms: { uTime: sharedTime, uPixelRatio: { value: 1 }, uGain: { value: 0.4 }, uLDR: sharedLDR, uExpLDR: sharedExp },
     vertexShader: SHADERS.starVertex, fragmentShader: SHADERS.starFragment, transparent: true, depthWrite: false,
     blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor });
-var starPoints = new THREE.Points(new THREE.BufferGeometry(), starMat);
-starPoints.frustumCulled = false; starPoints.renderOrder = -1; scene.add(starPoints);
+var starGroup = new THREE.Group(); scene.add(starGroup);
+// The stars are split into 96 patches of sky (each face of a cube, 4 x 4), so every patch that is off screen is skipped without being drawn
 function setStars(sky) {
-    var pos = new Float32Array(sky.count * 3), i;
-    for (i = 0; i < pos.length; i++) pos[i] = sky.dir[i] * 900;
-    var geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute("aMag", new THREE.BufferAttribute(sky.mag, 1));
-    geo.setAttribute("aColor", new THREE.BufferAttribute(sky.color, 3));
-    starPoints.geometry = geo;
+    var n = sky.count, d = sky.dir, key = new Uint8Array(n), cnt = new Uint32Array(96), i, k, ax, ay, az, f, a, b, ia, ib;
+    for (i = 0; i < n; i++) {
+        ax = Math.abs(d[i * 3]); ay = Math.abs(d[i * 3 + 1]); az = Math.abs(d[i * 3 + 2]);
+        if (ax >= ay && ax >= az) { f = d[i * 3] > 0 ? 0 : 1; a = d[i * 3 + 1] / ax; b = d[i * 3 + 2] / ax; }
+        else if (ay >= az) { f = d[i * 3 + 1] > 0 ? 2 : 3; a = d[i * 3] / ay; b = d[i * 3 + 2] / ay; }
+        else { f = d[i * 3 + 2] > 0 ? 4 : 5; a = d[i * 3] / az; b = d[i * 3 + 1] / az; }
+        ia = Math.min(3, Math.max(0, Math.floor((a * 0.5 + 0.5) * 4))); ib = Math.min(3, Math.max(0, Math.floor((b * 0.5 + 0.5) * 4)));
+        k = f * 16 + ia * 4 + ib; key[i] = k; cnt[k]++;
+    }
+    while (starGroup.children.length) { var old = starGroup.children[0]; starGroup.remove(old); if (old.geometry && old.geometry.dispose) old.geometry.dispose(); }
+    var bufs = [];
+    for (k = 0; k < 96; k++) bufs.push(cnt[k] ? { pos: new Float32Array(cnt[k] * 3), mag: new Float32Array(cnt[k]), col: new Float32Array(cnt[k] * 3), n: 0 } : null);
+    for (i = 0; i < n; i++) {
+        var bb = bufs[key[i]], j = bb.n++;
+        bb.pos[j * 3] = d[i * 3] * 900; bb.pos[j * 3 + 1] = d[i * 3 + 1] * 900; bb.pos[j * 3 + 2] = d[i * 3 + 2] * 900;
+        bb.mag[j] = sky.mag[i]; bb.col[j * 3] = sky.color[i * 3]; bb.col[j * 3 + 1] = sky.color[i * 3 + 1]; bb.col[j * 3 + 2] = sky.color[i * 3 + 2];
+    }
+    for (k = 0; k < 96; k++) {
+        if (!bufs[k]) continue;
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.BufferAttribute(bufs[k].pos, 3));
+        geo.setAttribute("aMag", new THREE.BufferAttribute(bufs[k].mag, 1));
+        geo.setAttribute("aColor", new THREE.BufferAttribute(bufs[k].col, 3));
+        if (geo.computeBoundingSphere) { geo.computeBoundingSphere(); if (geo.boundingSphere) geo.boundingSphere.radius += 60; }     // a little margin: the spikes of bright stars reach past the star
+        var pts = new THREE.Points(geo, starMat); pts.renderOrder = -1; starGroup.add(pts);
+    }
 }
 setStars(skyData);
 var skyMat = new THREE.ShaderMaterial({ uniforms: { uGalX: { value: new THREE.Vector3(GAL_X[0], GAL_X[1], GAL_X[2]) }, uGalY: { value: new THREE.Vector3(GAL_Y[0], GAL_Y[1], GAL_Y[2]) },
@@ -2058,12 +2088,15 @@ var dust = new THREE.Points(dustGeo, dustMat); dust.frustumCulled = false; scene
 
 /* ---------- planets ---------- */
 var BASE = { mercury: 0x8a8580, venus: 0xd8b878, earth: 0x1f4a80, mars: 0xb5603a, jupiter: 0xcaa07a, saturn: 0xdac08a, uranus: 0x9adce0, neptune: 0x3c64d0, pluto: 0xa08c78, moon: 0x909090 };
-var SEGS = { earth: 256, jupiter: 256, saturn: 224, venus: 160, mars: 160, uranus: 160, neptune: 160, mercury: 128, pluto: 96, moon: 160 };
+var SEGS = { earth: 384, jupiter: 320, saturn: 288, venus: 224, mars: 256, uranus: 224, neptune: 224, mercury: 192, pluto: 160, moon: 256 };
+var DETAIL = /[?&]detail=0/.test(location.search) ? 0 : 1;           // ?detail=0 turns the fine surface detail off, to compare
+var DETAIL_BASE = { earth: 0.9, mars: 1.0, mercury: 1.0, pluto: 0.9, moon: 1.0 };      // the gas giants and cloudy Venus stay smooth
 function planetUniforms(id) {
     return { uMap: { value: flatTexture(BASE[id]) }, uNormalMap: { value: flatNormal }, uSpecMap: { value: whiteTex }, uNightMap: { value: blackTex }, uCloudMap: { value: blackTex }, uRingTex: { value: blackTex },
         uUseNormal: { value: 0 }, uUseSpecMap: { value: 0 }, uUseNightMap: { value: 0 }, uNight: { value: 0 }, uAlphaMode: { value: 0 }, uAlphaLum: { value: 0 },
         uSpecAmt: { value: 0 }, uSpecPower: { value: 110 }, uAmbient: { value: 0.03 }, uLimb: { value: 0 }, uCloudShadow: { value: 0 }, uCloudLum: { value: 0 },
         uRingShadow: { value: 0 }, uRingNormal: { value: new THREE.Vector3(0, 1, 0) }, uRingRange: { value: new THREE.Vector2(0, 1) }, uSunExt: { value: new THREE.Vector3(0, 0, 0) },
+        uDetail: { value: 0 }, uRpx: { value: 0 },
         uSunPower: sharedSun, uTime: sharedTime, uLDR: sharedLDR, uExpLDR: sharedExp, uVelocity: sharedVel, uMotionView: sharedMotion };
 }
 function planetMaterial(u, transparent) {
@@ -2076,9 +2109,10 @@ BODIES.forEach(function (b) {
     var u = planetUniforms(b.id), group = new THREE.Group(), tilt = new THREE.Group();
     var mesh = new THREE.Mesh(new THREE.SphereGeometry(b.r, seg(b.id), seg(b.id)), planetMaterial(u, false));
     tilt.rotation.z = b.tilt; tilt.add(mesh); group.add(tilt); scene.add(group);
+    u.uDetail.value = DETAIL * (DETAIL_BASE[b.id] || 0);
     P[b.id] = { group: group, tilt: tilt, mesh: mesh, u: u, spin: b.spin, r: b.r, tiltAngle: b.tilt };
 });
-var moonU = planetUniforms("moon"), moon = new THREE.Mesh(new THREE.SphereGeometry(MOON_R, seg("moon"), seg("moon")), planetMaterial(moonU, false)); scene.add(moon);
+var moonU = planetUniforms("moon"); moonU.uDetail.value = DETAIL; var moon = new THREE.Mesh(new THREE.SphereGeometry(MOON_R, seg("moon"), seg("moon")), planetMaterial(moonU, false)); scene.add(moon);
 function bodyU(id) { return id === "moon" ? moonU : P[id].u; }
 // gas giants darken toward the edge; Earth and Mars redden the sunlight when the Sun is low
 [["jupiter", 0.9], ["saturn", 0.8], ["uranus", 0.7], ["neptune", 0.7], ["venus", 0.6]].forEach(function (e) { P[e[0]].u.uLimb.value = e[1]; });
@@ -2109,7 +2143,7 @@ function addAtmosphere(id) {
         uHr: { value: A.Hr }, uHm: { value: A.Hm }, uSun: { value: A.sun }, uG: { value: A.g }, uLDR: sharedLDR, uExpLDR: sharedExp },
         vertexShader: SHADERS.atmoVertex, fragmentShader: SHADERS.atmoFragment, transparent: true, depthWrite: false,
         blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.SrcAlphaFactor });
-    var mesh = new THREE.Mesh(new THREE.SphereGeometry(R * A.ratio, Math.round(128 * SEG), Math.round(128 * SEG)), m); mesh.renderOrder = 3; P[id].group.add(mesh); shells.push(mesh);
+    var mesh = new THREE.Mesh(new THREE.SphereGeometry(R * A.ratio, Math.round(128 * SEG), Math.round(128 * SEG)), m); mesh.renderOrder = 3; mesh.userData = mesh.userData || {}; mesh.userData.pid = id; P[id].group.add(mesh); shells.push(mesh);
 }
 Object.keys(ATMOSPHERES).forEach(addAtmosphere);
 
@@ -2171,8 +2205,8 @@ issGroup.scale.setScalar(0.26); scene.add(issGroup);
 // The moons of the other planets: small lit spheres on their own orbits, painted below
 function averageHex(A, B) { return (Math.round((A[0] + B[0]) * 127.5) << 16) | (Math.round((A[1] + B[1]) * 127.5) << 8) | Math.round((A[2] + B[2]) * 127.5); }
 var moonMeshes = MOONS.map(function (m, idx) {
-    var u = planetUniforms("moon"); u.uMap.value = flatTexture(averageHex(m.A, m.B));
-    var segs = m.r >= 0.25 ? 48 : 24, mesh = new THREE.Mesh(new THREE.SphereGeometry(m.r, segs, Math.round(segs * 0.75)), planetMaterial(u, false));
+    var u = planetUniforms("moon"); u.uMap.value = flatTexture(averageHex(m.A, m.B)); u.uDetail.value = DETAIL * ((m.k === 1 || m.k === 5) ? 0.25 : 0.9);
+    var segs = Math.round((m.r >= 0.25 ? 96 : 48) * SEG), mesh = new THREE.Mesh(new THREE.SphereGeometry(m.r, segs, Math.round(segs * 0.75)), planetMaterial(u, false));
     mesh.scale.set(m.shape[0], m.shape[1], m.shape[2]); mesh.rotation.order = "ZYX"; mesh.rotation.z = bodyById(m.planet).tilt;
     scene.add(mesh);
     return { def: m, mesh: mesh, u: u, idx: idx, tilt: bodyById(m.planet).tilt, planetR: bodyById(m.planet).r };
@@ -2218,16 +2252,23 @@ function failedPrograms() {
     for (var i = 0; i < list.length; i++) if (list[i].diagnostics && list[i].diagnostics.runnable === false) n++;
     return n;
 }
+var failedSources = {}, currentOwner = null, stripPx = 524288, stripsPerFrame = 1, paintScale = 1, keptPrograms = {};
+function keepProgram(mat) {         // the first material of each painter stays alive, so painting again later never recompiles its shader
+    var k = mat.fragmentShader;
+    if (!keptPrograms[k]) keptPrograms[k] = mat; else mat.dispose();
+}
 function enqueueMat(mat, W, H, opts) {
+    if (failedSources[mat.fragmentShader]) { mat.dispose(); return Promise.reject(new Error("this painter already failed to compile")); }      // a shader that failed once is never tried again
     return new Promise(function (resolve, reject) {
         var half = opts && opts.half;     // half-float, no mipmaps: for the sky, which needs the full brightness range
         var rt = new THREE.WebGLRenderTarget(W, H, { minFilter: half ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: half ? THREE.HalfFloatType : THREE.UnsignedByteType, depthBuffer: false, stencilBuffer: false, generateMipmaps: !half });
         rt.texture.wrapS = THREE.RepeatWrapping; rt.texture.wrapT = THREE.ClampToEdgeWrapping; rt.texture.anisotropy = maxAniso;
-        jobs.push({ mat: mat, rt: rt, W: W, H: H, y: 0, rowH: Math.max(16, Math.floor(524288 / W / 8) * 8), resolve: resolve, reject: reject, checked: false });
+        if (currentOwner) currentOwner.rts.push(rt);        // remembered, so the texture can be freed when the planet is left behind
+        jobs.push({ mat: mat, rt: rt, W: W, H: H, y: 0, rowH: Math.max(16, Math.floor(stripPx / W / 8) * 8), resolve: resolve, reject: reject, checked: false });
     });
 }
 function bake(src, W, mode, extra, bump) {
-    var H = W / 2;
+    W = Math.max(128, Math.round(W * paintScale)); var H = W / 2;      // paintScale is below 1 while a quick small preview is being painted
     var uniforms = { uMode: { value: mode }, uTexW: { value: W }, uTexH: { value: H }, uBump: { value: bump || 1 } };
     Object.keys(extra || {}).forEach(function (k) { uniforms[k] = extra[k]; });
     var mat = new THREE.ShaderMaterial({ uniforms: uniforms, vertexShader: SHADERS.bakeVertex, fragmentShader: GLSL_LIB + src + GLSL_MAIN, depthTest: false, depthWrite: false, extensions: { derivatives: true } });
@@ -2246,11 +2287,10 @@ function bakeStep() {
     if (!j.checked) {                                       // the first strip compiles the shader: did it work?
         j.checked = true;
         var f = failedPrograms();
-        if (f > failedSeen) { failedSeen = f; activeJob = null; j.mat.dispose(); j.rt.dispose(); j.reject(new Error("shader did not compile")); return; }
+        if (f > failedSeen) { failedSeen = f; failedSources[j.mat.fragmentShader] = true; activeJob = null; j.mat.dispose(); j.rt.dispose(); j.reject(new Error("shader did not compile")); return; }
     }
-    if (j.y >= j.H) { j.mat.dispose(); activeJob = null; j.resolve(j.rt); }
+    if (j.y >= j.H) { keepProgram(j.mat); activeJob = null; j.resolve(j.rt); }
 }
-var baking = true, bakeEnd = 0;
 
 /* ---------- every custom shader is test-compiled up front; anything that cannot compile is swapped for something simpler ---------- */
 var probeScene = new THREE.Scene(), probeGeo = new THREE.PlaneGeometry(1, 1);
@@ -2379,11 +2419,13 @@ if (!probe(P.mercury.mesh.material)) useSafeShader();
 if (shells.length && !probe(shells[0].material)) shells.forEach(function (m) { m.visible = false; });
 if (!probe(ringMat)) ringMesh.material = new THREE.MeshBasicMaterial({ map: ringTex, color: new THREE.Color(0.35, 0.3, 0.25), transparent: true, side: THREE.DoubleSide, depthWrite: false });
 if (!probe(sunMat)) sun.material = sunFallbackMat;
-if (!probe(starMat)) starPoints.visible = false;
+if (!probe(starMat)) starGroup.visible = false;
 var skyDirectOK = probe(skyMat), skyTexOK = probe(skyTexMat);
 if (!probe(coronaMat)) corona.visible = false;
 if (!probe(auroraMat)) aurora.visible = false;
 if (!probe(dustMat)) dust.visible = false;
+var auroraOn = aurora.visible, dustOn = dust.visible;      // what the extras are allowed to show: the frame loop then also hides whatever is out of range
+shells.forEach(function (m) { m.userData.on = m.visible; });
 hdr = buildHDR();
 if (!hdr) goLDR();
 if ((!hdr || !skyTexOK) && skyDirectOK) { skyMesh.material = skyMat; skyMesh.visible = true; }   // no baked sky possible: compute it live instead
@@ -2428,15 +2470,15 @@ var TASKS = [
     }, cpu: function () { if (skyDirectOK) { skyMesh.material = skyMat; skyMesh.visible = true; } } },
     { veil: true, gpu: async function () {                  // Earth: colour + glints, normal map + city lights, clouds
         var W = RES.big, u = P.earth.u;
-        var col = await bake(SRC.earth, W, 0, {}, 1), nor = await bake(SRC.earth, W, 1, {}, 0.12), cld = await bake(SRC.clouds, W, 0, {}, 1);
+        var col = await bake(SRC.earth, W, 0, {}, 1), nor = await bake(SRC.earth, W, 1, {}, 0.3), cld = await bake(SRC.clouds, W, 0, {}, 1);
         u.uMap.value = col.texture; u.uNormalMap.value = nor.texture; u.uUseNormal.value = 1; u.uNight.value = 1; u.uSpecAmt.value = 0.9; u.uSpecPower.value = 110;
-        cloudU.uMap.value = cld.texture; u.uCloudMap.value = cld.texture; u.uCloudShadow.value = 1; clouds.visible = !safeMode;
+        cloudU.uMap.value = cld.texture; u.uCloudMap.value = cld.texture; u.uCloudShadow.value = 1; cloudsPainted = true;
     }, cpu: function () {
         P.earth.u.uMap.value = cpuPaint(1024, 512, earthColor);
         var c = document.createElement("canvas"); c.width = 512; c.height = 256;
         var g = c.getContext("2d"), img = g.createImageData(512, 256), x, y, i;
         for (y = 0; y < 256; y++) for (x = 0; x < 512; x++) { i = (y * 512 + x) * 4; img.data[i] = 244; img.data[i + 1] = 247; img.data[i + 2] = 255; img.data[i + 3] = Math.round(cloudAlpha(((x + 0.5) / 512 - 0.5) * 2 * Math.PI, (0.5 - (y + 0.5) / 256) * Math.PI) * 255); }
-        g.putImageData(img, 0, 0); cloudU.uMap.value = new THREE.CanvasTexture(c); clouds.visible = !safeMode;
+        g.putImageData(img, 0, 0); cloudU.uMap.value = new THREE.CanvasTexture(c); cloudsPainted = true;
     } },
     { gpu: async function () { var rt = await bake(SRC.sun, RES.big, 0, {}, 1); setSunTexture(rt.texture); },
       cpu: function () { setSunTexture(cpuPaint(1024, 512, sunColor)); } },
@@ -2449,27 +2491,108 @@ var TASKS = [
     gasTask("uranus", 2, "mid", uranusColor),
     gasTask("neptune", 3, "mid", neptuneColor),
     rockyTask("pluto", P.pluto.u, 3, 0.5, 1.2, "mid", plutoColor, { seed: 31, specs: CR_FEW }),
-    { gpu: async function () {                              // the 26 moons of the other planets: one painter, steered per moon
-        var scaleRes = tier === "max" ? 1 : tier === "high" ? 0.5 : 0.25;
-        for (var i = 0; i < moonMeshes.length; i++) {
-            var mm = moonMeshes[i], m = mm.def, W = Math.max(128, Math.min(Math.round(m.res * scaleRes), maxTex));
-            var extra = { uKind: { value: m.k }, uCraterAmp: { value: 1 }, uDensity: { value: m.dens }, uColA: { value: new THREE.Vector3(m.A[0], m.A[1], m.A[2]) }, uColB: { value: new THREE.Vector3(m.B[0], m.B[1], m.B[2]) }, uSeed: { value: i + 1 } };
-            var col = await bake(SRC.moon, W, 0, extra, 1);
-            mm.u.uMap.value = col.texture;
-            if (m.k !== 1 && m.k !== 5) { var nor = await bake(SRC.moon, W, 1, extra, 1.0); mm.u.uNormalMap.value = nor.texture; mm.u.uUseNormal.value = 1; }   // Io and Titan are smooth
-        }
-    }, cpu: function () {} }
 ];
-(async function runBake() {
-    for (var i = 0; i < TASKS.length; i++) {
-        try { await TASKS[i].gpu(); } catch (e) { try { TASKS[i].cpu(); } catch (e2) {} }
-        loadFill.style.width = ((i + 1) / TASKS.length * 100) + "%";
-        if (TASKS[i].veil) clearVeil();                     // the first view (Earth) is ready: fade up from black
+/* ---------- what is on screen is what is painted ----------
+   Nothing is painted until the camera is about to need it. The tour is on a timetable, so the planet it flies to next is painted while
+   the camera is still at the one before, long before it arrives. A planet the camera has left behind is freed after a while, and painted
+   again when the loop comes round (or when you scroll back). The Sun and the sky stay, because they are in view almost everywhere. */
+var UKEYS = ["uMap", "uNormalMap", "uUseNormal", "uNight", "uSpecAmt", "uSpecPower", "uCloudMap", "uCloudShadow"];
+function snapshot(u) { var sn = {}; UKEYS.forEach(function (k) { if (u[k]) sn[k] = u[k].value; }); return function () { for (var k in sn) u[k].value = sn[k]; }; }
+var assets = {}, assetList = [], paintingAsset = null, cloudsPainted = false, bootDone = false, bootSet = null, lastPaintEnd = 0;
+var KEEP_SECONDS = 20, CLOSE_RADII = 16;
+function makeAsset(id, o) {
+    var a = { id: id, always: !!o.always || REAL_ON, veil: !!o.veil, paint: o.paint, cpu: o.cpu, reset: o.reset || function () {}, level: 0, busy: false, rts: [], lowRts: [], need: false, needFor: 0, lastNeeded: 0, painted: 0, released: 0, noRelease: false };
+    assets[id] = a; assetList.push(a); return a;
+}
+async function paintMoons(list) {
+    var scaleRes = tier === "max" ? 1 : tier === "high" ? 0.5 : 0.25;
+    for (var i = 0; i < list.length; i++) {
+        var mm = list[i], m = mm.def, W = Math.max(128, Math.min(Math.round(m.res * scaleRes), maxTex));
+        var extra = { uKind: { value: m.k }, uCraterAmp: { value: 1 }, uDensity: { value: m.dens }, uColA: { value: new THREE.Vector3(m.A[0], m.A[1], m.A[2]) }, uColB: { value: new THREE.Vector3(m.B[0], m.B[1], m.B[2]) }, uSeed: { value: mm.idx + 1 } };
+        var col = await bake(SRC.moon, W, 0, extra, 1);
+        mm.u.uMap.value = col.texture;
+        if (m.k !== 1 && m.k !== 5) { var nor = await bake(SRC.moon, W, 1, extra, 1.0); mm.u.uNormalMap.value = nor.texture; mm.u.uUseNormal.value = 1; }   // Io and Titan are smooth
     }
-    clearVeil(); loadBar.className = "done"; baking = false; bakeEnd = performance.now();
+}
+makeAsset("sky", { always: true, paint: TASKS[0].gpu, cpu: TASKS[0].cpu });
+makeAsset("sun", { always: true, paint: TASKS[2].gpu, cpu: TASKS[2].cpu });
+(function () {                                                     // Earth, its clouds and the Moon go together
+    var snapE = snapshot(P.earth.u), snapC = snapshot(cloudU), snapM = snapshot(moonU);
+    makeAsset("earth", { veil: true,
+        paint: async function () { await TASKS[1].gpu(); try { await TASKS[3].gpu(); } catch (e) { TASKS[3].cpu(); } cloudsPainted = true; },
+        cpu: function () { TASKS[1].cpu(); try { TASKS[3].cpu(); } catch (e) {} cloudsPainted = true; },
+        reset: function () { snapE(); snapC(); snapM(); cloudsPainted = false; } });
+})();
+function planetAsset(id, task) {                                   // a planet and its moons go together
+    var moons = moonMeshes.filter(function (m) { return m.def.planet === id; }), snaps = [snapshot(P[id].u)].concat(moons.map(function (m) { return snapshot(m.u); }));
+    makeAsset(id, { paint: async function () { await task.gpu(); try { await paintMoons(moons); } catch (e) {} }, cpu: function () { task.cpu(); },
+        reset: function () { snaps.forEach(function (r) { r(); }); } });
+}
+planetAsset("mars", TASKS[6]); planetAsset("jupiter", TASKS[4]); planetAsset("saturn", TASKS[5]); planetAsset("uranus", TASKS[9]);
+planetAsset("neptune", TASKS[10]); planetAsset("pluto", TASKS[11]); planetAsset("mercury", TASKS[8]); planetAsset("venus", TASKS[7]);
+
+var PREVIEW_SCALE = 0.25;                                          // the quick version is a quarter of the width: a sixteenth of the work
+function checkBoot() {
+    if (bootDone || !bootSet) return;
+    var ready = 0, i; for (i = 0; i < bootSet.length; i++) if (bootSet[i].always ? bootSet[i].level === 2 : bootSet[i].level >= 1) ready++;
+    loadFill.style.width = (ready / bootSet.length * 100) + "%";
+    if (ready < bootSet.length) return;
+    bootDone = true; clearVeil(); loadBar.className = "done";
     if (/[?&]flag=1/.test(location.search)) visitFlag();
     if (REAL_ON) { loadReal(); loadCatalog(); loadISSModel(); }
-})();
+}
+// Every planet is painted twice: first small (a few frames, so it is there the moment you arrive), then in full, which swaps in without a flash.
+function paintAsset(a, target, urgent) {
+    a.busy = true; paintingAsset = a; currentOwner = a; lastPaintEnd = performance.now();
+    paintScale = target === 1 ? PREVIEW_SCALE : 1;
+    var fast = urgent || !bootDone || target === 1;                // big bites when it is wanted now, small bites when it is only being got ready
+    stripPx = fast ? 524288 : 131072; stripsPerFrame = fast ? 2 : 1;
+    if (target === 2) { a.lowRts = a.rts; a.rts = []; }
+    var finish = function (level) {
+        paintScale = 1; stripPx = 524288; stripsPerFrame = 1;
+        if (level === 2) { for (var i = 0; i < a.lowRts.length; i++) a.lowRts[i].dispose(); a.lowRts = []; }   // the small version is replaced
+        a.level = level; a.busy = false; a.painted++; currentOwner = null; paintingAsset = null; lastPaintEnd = performance.now();
+        if (a.veil) clearVeil(); checkBoot();
+    };
+    Promise.resolve().then(function () { return a.paint(); }).then(function () { finish(target); }, function () { try { a.cpu(); a.noRelease = true; } catch (e) {} finish(2); });
+}
+function releaseAsset(a) {
+    if (a.level !== 2 || a.always || a.noRelease) return;
+    a.reset();                                                       // back to a plain ball first, so nothing points at a texture that is about to be freed
+    for (var i = 0; i < a.rts.length; i++) a.rts[i].dispose();
+    a.rts.length = 0; a.level = 0; a.released++;                    // the small version is painted again in the background
+}
+function updateResidency(path, ws, cpos, dt) {
+    var i, a, p, dx, dy, dz, d2;
+    for (i = 0; i < assetList.length; i++) assetList[i].need = assetList[i].always;
+    if (assets[TOUR[path.index].id]) assets[TOUR[path.index].id].need = true;
+    if (assets[TOUR[path.next].id]) assets[TOUR[path.next].id].need = true;      // the one we are flying to next is wanted from the moment we arrive at this one
+    if (flag.wait || flag.active) assets.earth.need = true;
+    for (i = 0; i < assetList.length; i++) {
+        a = assetList[i];
+        if (!a.need && P[a.id] && ws.pos[a.id]) { p = ws.pos[a.id]; dx = p[0] - cpos.x; dy = p[1] - cpos.y; dz = p[2] - cpos.z; if (Math.sqrt(dx * dx + dy * dy + dz * dz) < P[a.id].r * CLOSE_RADII) a.need = true; }     // also anything the camera is close to (scrolling about)
+        if (a.need) { a.lastNeeded = clock; a.needFor += dt; } else a.needFor = 0;
+        if (!a.need && a.level === 2 && clock - a.lastNeeded > KEEP_SECONDS) releaseAsset(a);
+    }
+    if (!bootSet) bootSet = assetList.filter(function (x) { return x.always || x.id === TOUR[path.stopIndex].id; });
+    if (paintingAsset) return;
+    var best = null, bs = 1e30, sc, target = 0, bt = 0, urgent = false, bu = false;
+    for (i = 0; i < assetList.length; i++) {
+        a = assetList[i];
+        if (a.busy) continue;
+        d2 = 0; p = ws.pos[a.id]; if (p) { dx = p[0] - cpos.x; dy = p[1] - cpos.y; dz = p[2] - cpos.z; d2 = dx * dx + dy * dy + dz * dz; }
+        if (a.always) { if (a.level >= 2) continue; target = 2; sc = -2; urgent = true; }
+        else if (a.need) {
+            if (a.level >= 2) continue;
+            target = (a.level === 0 || a.needFor <= 0.1) ? 1 : 2;      // the small version first; the full one once it has been wanted for a moment
+            if (target === 1 && a.level >= 1) continue;
+            sc = d2; urgent = !!P[a.id] && d2 < P[a.id].r * P[a.id].r * 576;      // within 24 radii: you are about to see it, so paint in big bites
+        } else if (a.level === 0 && bootDone) { target = 1; sc = 1e12 + i; urgent = false; }      // idle time: every other planet gets its small version
+        else continue;
+        if (sc < bs) { bs = sc; best = a; bt = target; bu = urgent; }
+    }
+    if (best) paintAsset(best, bt, bu);
+}
 
 /* ---------- your own photo data (see the note at the top of this file). Missing files are skipped. ---------- */
 var REAL_FILES = {
@@ -2504,7 +2627,7 @@ function loadReal() {
         if (f.spec) loadTexture(f.spec, function (t) { var u = bodyU(id); u.uSpecMap.value = t; u.uUseSpecMap.value = 1; u.uSpecAmt.value = 0.9; });
         if (f.night) loadTexture(f.night, function (t) { var u = bodyU(id); u.uNightMap.value = t; u.uUseNightMap.value = 1; u.uNight.value = 1; });
         if (f.clouds) loadTexture(f.clouds, function (t) {
-            cloudU.uMap.value = t; cloudU.uAlphaLum.value = 1; clouds.visible = !safeMode;
+            cloudU.uMap.value = t; cloudU.uAlphaLum.value = 1; cloudsPainted = true;
             var u = P.earth.u; u.uCloudMap.value = t; u.uCloudLum.value = 1; u.uCloudShadow.value = 1;
         });
         if (f.ring) loadTexture(f.ring, function (t) { ringMat.uniforms.uRingTex.value = t; P.saturn.u.uRingTex.value = t; });
@@ -2566,10 +2689,30 @@ window.addEventListener("scroll", function () {
     if (p > 0.997) { loops += 1; setScroll(0.004, true); p = 0.004; }
     targetPhase = loops + p;
 }, { passive: true });
+// As the portfolio's background (in an iframe), the page above posts {scrollProgress: 0 to 1} as you scroll. The tour always drifts on its own
+// (AUTO_SPEED); scrolling down gives it a push forward, scrolling up pushes it backwards, and it settles back to the drift when you stop.
+// Only the background moves: the words on the page are never scrolled for you.
+var AUTO_SPEED = 1.25;      // the drift: 1 is the original slow pace, 2 would be twice as fast
+var SCROLL_GAIN = 0.6;      // how far one page of scrolling pushes the tour, in loops (0.6 = most of the way round)
+var SCROLL_SETTLE = 3;      // how quickly a push is spent (per second): lower is a longer, softer glide
+var MAX_PUSH = 0.2;         // the most one burst of scrolling can queue up, in loops, so a flick of the wheel never whips the camera
+var pendingKick = 0, lastParentP = null, lastParentMsg = -1e9, parentDriven = false;
+window.addEventListener("message", function (e) {
+    var d = e && e.data;
+    if (!e || e.source !== window.parent || !d) return;
+    if (typeof d.scrollPush === "number" && isFinite(d.scrollPush)) {       // a page that is too short to scroll can still push the scene: the amount is a fraction of a page
+        pendingKick = clamp(pendingKick + d.scrollPush * SCROLL_GAIN, -MAX_PUSH, MAX_PUSH); parentDriven = true; lastParentMsg = clock; return;
+    }
+    if (typeof d.scrollProgress !== "number" || !isFinite(d.scrollProgress)) return;
+    var p = clamp(d.scrollProgress, 0, 1);
+    if (lastParentP !== null && Math.abs(p - lastParentP) > 0.0002) pendingKick = clamp(pendingKick + (p - lastParentP) * SCROLL_GAIN, -MAX_PUSH, MAX_PUSH);
+    lastParentP = p; parentDriven = true; lastParentMsg = clock;
+});
 window.addEventListener("resize", function () { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); updateMaxScroll(); applyPR(); });
 // A small handle for when this becomes your portfolio background
-window.Cosmic = { setAuto: function (on) { if (on && !auto) { auto = true; } else if (!on) { takeOver(); } }, get tier() { return tier; }, get hdr() { return !!hdr; }, get lite() { return lite; }, visitFlag: visitFlag, moons: MOONS.length + 1, get phase() { return ((targetPhase % 1) + 1) % 1; } };
+window.Cosmic = { get resident() { return assetList.filter(function (a) { return a.level === 2; }).map(function (a) { return a.id; }); }, get previews() { return assetList.filter(function (a) { return a.level >= 1; }).map(function (a) { return a.id; }); }, get painting() { return paintingAsset ? paintingAsset.id : null; }, setAuto: function (on) { if (on && !auto) { auto = true; } else if (!on) { takeOver(); } }, get tier() { return tier; }, get following() { return Math.abs(pendingKick) > 0.002; }, get hdr() { return !!hdr; }, get lite() { return lite; }, visitFlag: visitFlag, moons: MOONS.length + 1, get phase() { return ((targetPhase % 1) + 1) % 1; } };
 
+var planetIds = Object.keys(P), pdist = {};
 var clock = 0, last = performance.now(), prevCam = new THREE.Vector3(), motion = new THREE.Vector3(), velocity = 0, slowChecks = 0;
 var bX = new THREE.Vector3(), bY = new THREE.Vector3(), bZ = new THREE.Vector3(), bM = new THREE.Matrix4(), sunV3 = new THREE.Vector3();
 function frame(now) {
@@ -2577,7 +2720,7 @@ function frame(now) {
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (document.hidden) return;                            // nothing to draw while the tab is hidden
     clock += dt; sharedTime.value = clock;
-    bakeStep();
+    for (var bs0 = 0; bs0 < stripsPerFrame; bs0++) bakeStep();
 
     var ws = worldState(clock);
     if (flag.wait && !flag.active) {                        // the easter egg: wait until the flag is in sunlight, then fly there
@@ -2588,8 +2731,9 @@ function frame(now) {
         }
     }
     if (auto) {
-        if (!flag.active) { targetPhase += dt / TOUR_TOTAL; smoothPhase = targetPhase; if (clock - lastScrollWrite > 0.1) { lastScrollWrite = clock; setScroll(((targetPhase % 1) + 1) % 1); } }    // the scroll bar follows ten times a second
+        if (!flag.active) { var kick = pendingKick * (1 - Math.exp(-dt * SCROLL_SETTLE)); pendingKick -= kick; targetPhase += dt * AUTO_SPEED / TOUR_TOTAL + kick; smoothPhase = targetPhase; if (clock - lastScrollWrite > 0.1) { lastScrollWrite = clock; setScroll(((targetPhase % 1) + 1) % 1); } }    // the scroll bar follows ten times a second
     } else {
+        pendingKick = 0;
         smoothPhase += (targetPhase - smoothPhase) * (1 - Math.exp(-dt * 4.5));
     }
 
@@ -2609,7 +2753,7 @@ function frame(now) {
 
     var path = tourCamera(smoothPhase, ws), sway = reduceMotion ? 0 : 1, cp = path.pos, cl = path.look, roll = reduceMotion ? 0 : path.roll;
     if (flag.active) {                                      // the flag detour: blend the tour camera into a close-up of the flag and back
-        flag.t += dt;
+        flag.t += dt; pendingKick = 0;
         if (flag.t >= flag.dur) { flag.active = false; }
         else {
             var w = Math.min(sstep(flag.t / flag.ramp), sstep((flag.dur - flag.t) / flag.ramp)), fc = flagCamera(ws, -0.5 + flag.t / flag.dur);
@@ -2620,14 +2764,32 @@ function frame(now) {
     camera.lookAt(cl[0], cl[1], cl[2]);
     if (camera.rotateZ) camera.rotateZ(roll);               // a gentle bank during the flights
     camera.updateMatrixWorld();
-    starPoints.position.copy(camera.position); skyMesh.position.copy(camera.position); deepSky.position.copy(camera.position);     // the sky is at infinity
+    starGroup.position.copy(camera.position); skyMesh.position.copy(camera.position); deepSky.position.copy(camera.position);     // the sky is at infinity
 
     // moons: place them, and skip any too small to see (under a third of a pixel)
     var pxPerUnit = window.innerHeight / (2 * Math.tan(CAMERA_FOV * Math.PI / 360)), cpos = camera.position;
+    updateResidency(path, ws, cpos, dt);
+
+    // whatever cannot be seen is not drawn: far planets, atmospheres, clouds and aurora that are too far to show, the ISS and the flag when far away, dust when standing still
+    var pi, pid, pp, pdx, pdy, pdz, pd;
+    for (pi = 0; pi < planetIds.length; pi++) {
+        pid = planetIds[pi]; pp = ws.pos[pid]; pdx = pp[0] - cpos.x; pdy = pp[1] - cpos.y; pdz = pp[2] - cpos.z;
+        pd = Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz) + 1e-6; pdist[pid] = pd;
+        P[pid].group.visible = P[pid].r * 2.5 * pxPerUnit / pd > 0.3; P[pid].u.uRpx.value = P[pid].r * pxPerUnit / pd;
+    }
+    for (pi = 0; pi < shells.length; pi++) { pid = shells[pi].userData.pid; shells[pi].visible = shells[pi].userData.on && pdist[pid] < P[pid].r * 50; }
+    aurora.visible = auroraOn && pdist.earth < P.earth.r * 24;
+    clouds.visible = cloudsPainted && !safeMode && pdist.earth < P.earth.r * 60;
+    dust.visible = dustOn && velocity > 0.02;                   // the dust shader draws nothing at or below this speed, so skipping it changes nothing you can see
+    pdx = ws.pos.moon[0] - cpos.x; pdy = ws.pos.moon[1] - cpos.y; pdz = ws.pos.moon[2] - cpos.z;
+    flagGroup.visible = flag.wait || flag.active || Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz) < 14;
+    moonU.uRpx.value = MOON_R * pxPerUnit / (Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz) + 1e-6);
+    pdx = ws.iss.pos[0] - cpos.x; pdy = ws.iss.pos[1] - cpos.y; pdz = ws.iss.pos[2] - cpos.z;
+    issGroup.visible = 1.5 * pxPerUnit / (Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz) + 1e-6) > 0.5;
     for (var mi = 0; mi < moonMeshes.length; mi++) {
         var mm = moonMeshes[mi], md = mm.def, mp = ws.pos[md.id];
         var dx = mp[0] - cpos.x, dy = mp[1] - cpos.y, dz = mp[2] - cpos.z, dist = Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-6;
-        mm.mesh.visible = md.r * pxPerUnit / dist > 0.35;
+        mm.mesh.visible = md.r * pxPerUnit / dist > 0.35; mm.u.uRpx.value = md.r * pxPerUnit / dist;
         if (mm.mesh.visible) { mm.mesh.position.set(mp[0], mp[1], mp[2]); mm.mesh.rotation.y = -(md.phase + clock * moonAngularSpeed(md)); }
     }
 
@@ -2647,12 +2809,12 @@ function frame(now) {
     sharedVel.value = velocity;
 
     // quality governor: step the resolution down if the frame rate sags, back up when there is headroom; if it stays low at the lowest setting, drop the extras
-    if (!baking && now - bakeEnd > 3000) {
+    if (bootDone && !paintingAsset && !activeJob && jobs.length === 0 && now - lastPaintEnd > 3000) {
         gAcc += dt; gFrames++;
         if (gFrames >= 60) {
             var avg = gAcc / gFrames; gAcc = 0; gFrames = 0;
             if (avg > 1 / 48 && qScale > qMin) { qScale = Math.max(qMin, qScale - 0.15); lastDrop = clock; calm = 0; slowChecks = 0; applyPR(); }
-            else if (avg > 1 / 42 && qScale <= qMin + 1e-6) { if (!lite && ++slowChecks >= 3) { lite = true; dust.visible = false; deepSky.visible = false; aurora.visible = false; } }
+            else if (avg > 1 / 42 && qScale <= qMin + 1e-6) { if (!lite && ++slowChecks >= 3) { lite = true; dustOn = false; deepSky.visible = false; auroraOn = false; } }
             else if (avg < 1 / 57) { slowChecks = 0; if (++calm >= 4 && qScale < qMax && clock - lastDrop > 30) { qScale = Math.min(qMax, qScale + 0.1); calm = 0; applyPR(); } }
             else { calm = 0; slowChecks = 0; }
         }
