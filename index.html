@@ -251,8 +251,25 @@
     <script src="auth.js"></script>
     <script src="badges.js"></script>
     <script src="script.js"></script>
-    <!-- PASTE THESE LINES RIGHT ABOVE THE CLOSING BODY TAG -->
-    <script src="https://cloudflare.com"></script>
-    <script src="space-pipeline.js"></script>
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script src="badges.js"></script>
+    <script src="script.js"></script>
+
+    <!-- Paste this frame line directly above the closing body tag -->
+    <iframe src="background.html" id="space-hull" style="position: fixed; inset: 0; width: 100vw; height: 100vh; border: none; z-index: -2; pointer-events: none;"></iframe>
+    
+    <script>
+        // Passes your portfolio scrolling positions directly down into the space webpage frame
+        const spaceFrame = document.getElementById('space-hull');
+        window.addEventListener('scroll', () => {
+            if (spaceFrame && spaceFrame.contentWindow) {
+                const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+                const scrollPercent = maxScroll > 0 ? window.scrollY / maxScroll : 0;
+                spaceFrame.contentWindow.postMessage({ scrollProgress: scrollPercent }, '*');
+            }
+        });
+    </script>
 </body>
 </html>
+
