@@ -259,17 +259,21 @@ function ringColor(u) {
 }
 
 /* ---------- the solar system (sizes and distances are for looks, not to scale) ---------- */
+// spin is in radians per second, scaled so Earth's 23.93 hour day takes 39 seconds. Every other body turns at NASA's real rate relative to that:
+// Mars 24.6 h, Jupiter 9.9 h, Saturn 10.7 h, Neptune 16.1 h, Uranus 17.2 h, Pluto 6.4 days, Mercury 58.6 days, the Sun 25.4 days at its equator.
+// Venus shows its cloud tops, which race round in about 4 days; the planet underneath takes 243 days. Venus (tilt 177 degrees), Uranus (98) and
+// Pluto (122) are tipped past 90 degrees, so a positive spin about their axis is backwards (retrograde), as in real life.
 var BODIES = [
-    { id: "sun",     r: 30,  orbit: 0,   a0: 0,   tilt: 0,    spin: 0.02 },
-    { id: "mercury", r: 1.6, orbit: 62,  a0: 2.0, tilt: 0.0,  spin: 0.08 },
-    { id: "venus",   r: 3.8, orbit: 85,  a0: 4.6, tilt: 3.1,  spin: -0.03 },
+    { id: "sun",     r: 30,  orbit: 0,   a0: 0,   tilt: 0,    spin: 0.0063 },
+    { id: "mercury", r: 1.6, orbit: 62,  a0: 2.0, tilt: 0.0,  spin: 0.0027 },
+    { id: "venus",   r: 3.8, orbit: 85,  a0: 4.6, tilt: 3.1,  spin: 0.04 },
     { id: "earth",   r: 4,   orbit: 110, a0: 0.6, tilt: 0.41, spin: 0.16 },
-    { id: "mars",    r: 2.4, orbit: 150, a0: 3.4, tilt: 0.44, spin: 0.15 },
-    { id: "jupiter", r: 11,  orbit: 215, a0: 5.6, tilt: 0.05, spin: 0.35 },
-    { id: "saturn",  r: 9,   orbit: 285, a0: 1.7, tilt: 0.47, spin: 0.30 },
-    { id: "uranus",  r: 6,   orbit: 355, a0: 4.1, tilt: 1.71, spin: 0.20 },
-    { id: "neptune", r: 5.8, orbit: 420, a0: 2.8, tilt: 0.49, spin: 0.20 },
-    { id: "pluto",   r: 1.2, orbit: 470, a0: 0.1, tilt: 2.1,  spin: 0.05 }
+    { id: "mars",    r: 2.4, orbit: 150, a0: 3.4, tilt: 0.44, spin: 0.1555 },
+    { id: "jupiter", r: 11,  orbit: 215, a0: 5.6, tilt: 0.05, spin: 0.3859 },
+    { id: "saturn",  r: 9,   orbit: 285, a0: 1.7, tilt: 0.47, spin: 0.3594 },
+    { id: "uranus",  r: 6,   orbit: 355, a0: 4.1, tilt: 1.71, spin: 0.2221 },
+    { id: "neptune", r: 5.8, orbit: 420, a0: 2.8, tilt: 0.49, spin: 0.2377 },
+    { id: "pluto",   r: 1.2, orbit: 470, a0: 0.1, tilt: 2.14, spin: 0.025 }
 ];
 var MOON_R = 1.1, MOON_ORBIT = 12.5, ISS_ORBIT = 5.6, ISS_SPEED = 0.55;
 function bodyById(id) { for (var i = 0; i < BODIES.length; i++) if (BODIES[i].id === id) return BODIES[i]; return null; }
@@ -292,6 +296,7 @@ function issFrame(time, earth) {
     return { pos: vadd(earth, o), radial: vnorm(o), tangent: vnorm(vsub(o2, o)) };
 }
 function worldState(time) {
+    time = -time;       // the orbits run the same way the planets turn (counter-clockwise seen from the north), as in the real solar system
     var pos = {};
     BODIES.forEach(function (b) {
         if (b.orbit === 0) { pos[b.id] = [0, 0, 0]; return; }
@@ -306,19 +311,19 @@ function worldState(time) {
     return { pos: pos, moonAngle: m, iss: iss };
 }
 
-/* ---------- the timed tour: Earth, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, Mercury, Venus, then back to Earth ---------- */
+/* ---------- the timed tour, in order from the Sun: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, then back to Mercury ---------- */
 // The Moon and the ISS orbit the Earth and are simply there: the camera never stops at them.
 // hold = seconds at the stop, travel = seconds flying to the next one. Edit, reorder or delete stops here.
 var TOUR = [
+    { id: "mercury", hold: 7.0,  travel: 14.0 },
+    { id: "venus",   hold: 8.0,  travel: 14.0 },
     { id: "earth",   hold: 9.0,  travel: 14.0 },
     { id: "mars",    hold: 8.0,  travel: 14.0 },
     { id: "jupiter", hold: 9.0,  travel: 17.0 },
     { id: "saturn",  hold: 10.0, travel: 22.0 },
     { id: "uranus",  hold: 8.0,  travel: 26.0 },
     { id: "neptune", hold: 8.0,  travel: 31.0 },
-    { id: "pluto",   hold: 7.0,  travel: 18.0 },
-    { id: "mercury", hold: 7.0,  travel: 14.0 },
-    { id: "venus",   hold: 8.0,  travel: 14.0 }
+    { id: "pluto",   hold: 7.0,  travel: 18.0 }
 ];
 // The planets circle the Sun at different speeds, so two of them can be up to 890 units apart. The far flights are
 // longer so the camera stays gentle even then (a flight peaks at about 1.9 times its average speed).
@@ -368,7 +373,10 @@ function tourPhaseAtHold(i) {         // the phase in the middle of the hold at 
 var ISS_PARTS = (function () {
     var P = [], GREY = 0xb9bec6, WHITE = 0xe9edf2, DARK = 0x6a707a, GOLDFOIL = 0xc9a24a, s, k;
     function add(p) { P.push(p); }
+    // The truss runs across the direction of flight, the pressurised modules along it, and the big solar arrays (each broad face along the truss)
+    // turn on their joints to follow the Sun. axis: "y" stands a cylinder up, rot: lays it along the truss, otherwise it lies along the flight direction.
     add({ kind: "box", size: [9.4, 0.24, 0.24], pos: [0, 0, 0], color: GREY });                              // main truss
+    add({ kind: "box", size: [1.0, 0.34, 0.34], pos: [0, 0, 0], color: WHITE });                              // the central truss segment
     [[0.14, 0.1], [0.14, -0.1], [-0.14, 0.1], [-0.14, -0.1]].forEach(function (r) { add({ kind: "box", size: [9.4, 0.05, 0.05], pos: [0, r[0], r[1]], color: DARK }); });   // truss rails
     add({ kind: "cyl", size: [0.34, 1.9], pos: [0, 0, -1.55], color: WHITE });                               // service module
     add({ kind: "cyl", size: [0.30, 1.5], pos: [0, 0, 0.25], color: GREY });                                 // US lab
@@ -381,24 +389,30 @@ var ISS_PARTS = (function () {
     add({ kind: "cyl", size: [0.28, 1.25], pos: [1.2, 0, 0.55], color: WHITE, rot: true });
     add({ kind: "cyl", size: [0.22, 1.0], pos: [-2.1, 0, 1.0], color: GREY, rot: true });
     add({ kind: "cyl", size: [0.22, 1.0], pos: [2.1, 0, 1.0], color: GREY, rot: true });
-    add({ kind: "cyl", size: [0.16, 0.6], pos: [0.5, 0.25, -2.0], color: GOLDFOIL });                        // visiting capsule
-    add({ kind: "cyl", size: [0.02, 0.9], pos: [-0.3, 0.55, -1.8], color: DARK });                           // antenna
+    add({ kind: "cyl", size: [0.14, 0.6], pos: [0, 0.5, -2.0], color: GREY, axis: "y" });                    // an upward-pointing Russian port
+    add({ kind: "cyl", size: [0.2, 0.9], pos: [0, -0.5, -2.9], color: WHITE, axis: "y" });                  // a downward-hanging Russian module
+    add({ kind: "cyl", size: [0.14, 0.8], pos: [0, 0, -3.0], color: GOLDFOIL });                              // a Progress cargo ship at the rear port
+    add({ kind: "cyl", size: [0.02, 0.9], pos: [-0.3, 0.55, -1.8], color: DARK, axis: "y" });                // antenna
     for (s = -1; s <= 1; s += 2) {
-        // large solar arrays: outer pair copper, inner pair dark blue, each a pair of long panels with a cell grid
-        add({ kind: "box", size: [0.05, 3.3, 1.1], pos: [s * 4.3, 1.75, 0], color: 0xffffff, panel: "gold" });
-        add({ kind: "box", size: [0.05, 3.3, 1.1], pos: [s * 4.3, -1.75, 0], color: 0xffffff, panel: "gold" });
-        add({ kind: "box", size: [0.05, 3.3, 1.1], pos: [s * 3.0, 1.75, 0], color: 0xffffff, panel: "blue" });
-        add({ kind: "box", size: [0.05, 3.3, 1.1], pos: [s * 3.0, -1.75, 0], color: 0xffffff, panel: "blue" });
-        add({ kind: "cyl", size: [0.025, 3.6], pos: [s * 4.3, 0, 0], color: DARK });                           // array masts
-        add({ kind: "cyl", size: [0.025, 3.6], pos: [s * 3.0, 0, 0], color: DARK });
+        // Russian segment arrays, smaller and fixed
+        add({ kind: "box", size: [1.3, 0.04, 0.55], pos: [s * 1.05, 0.05, -1.9], color: 0xffffff, panel: "blue" });
+        // the large solar arrays: outer pair copper, inner pair dark blue, each a pair of long panels with a cell grid, on a mast, on a rotating joint (array: the joint's place)
+        add({ kind: "box", size: [1.1, 3.3, 0.05], pos: [s * 4.3, 1.75, 0], color: 0xffffff, panel: "gold", array: s * 4.3 });
+        add({ kind: "box", size: [1.1, 3.3, 0.05], pos: [s * 4.3, -1.75, 0], color: 0xffffff, panel: "gold", array: s * 4.3 });
+        add({ kind: "box", size: [1.1, 3.3, 0.05], pos: [s * 3.0, 1.75, 0], color: 0xffffff, panel: "blue", array: s * 3.0 });
+        add({ kind: "box", size: [1.1, 3.3, 0.05], pos: [s * 3.0, -1.75, 0], color: 0xffffff, panel: "blue", array: s * 3.0 });
+        add({ kind: "cyl", size: [0.025, 3.6], pos: [s * 4.3, 0, 0], color: DARK, axis: "y", array: s * 4.3 });   // array masts
+        add({ kind: "cyl", size: [0.025, 3.6], pos: [s * 3.0, 0, 0], color: DARK, axis: "y", array: s * 3.0 });
         add({ kind: "box", size: [0.04, 2.3, 0.95], pos: [s * 1.0, 1.3, -0.5], color: WHITE });                 // white radiator panels
         add({ kind: "box", size: [0.04, 2.3, 0.95], pos: [s * 1.0, -1.3, -0.5], color: WHITE });
         add({ kind: "cyl", size: [0.14, 0.5], pos: [s * 3.65, 0, 0], color: DARK, rot: true });                // rotary joints
         add({ kind: "cyl", size: [0.16, 0.4], pos: [s * 2.2, 0, 0], color: DARK, rot: true });
         for (k = 0; k < 3; k++) add({ kind: "box", size: [0.3, 0.26, 0.3], pos: [s * (1.6 + k * 0.5), 0.2, 0.25], color: k % 2 ? GREY : WHITE });   // equipment boxes
     }
-    add({ kind: "box", size: [0.12, 0.12, 2.2], pos: [0.5, -0.3, 1.6], color: DARK });                       // robotic arm
-    add({ kind: "sphere", size: [0.09], pos: [0.5, -0.3, 2.75], color: GREY });
+    add({ kind: "box", size: [0.1, 0.1, 1.3], pos: [0.5, -0.3, 1.05], color: WHITE });                       // the robotic arm: upper section,
+    add({ kind: "sphere", size: [0.085], pos: [0.5, -0.3, 1.75], color: GREY });                             // elbow,
+    add({ kind: "box", size: [1.1, 0.1, 0.1], pos: [1.05, -0.3, 1.75], color: WHITE });                       // forearm,
+    add({ kind: "sphere", size: [0.095], pos: [1.62, -0.3, 1.75], color: DARK });                            // and hand
     return P;
 })();
 
@@ -1324,6 +1338,7 @@ varying vec3 vObjNormal;
 varying vec3 vCenter;
 uniform float uDetail;
 uniform float uRpx;
+uniform float uMorph;
 float dtlH(vec3 p) { p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3)); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float dtlN(vec3 x) {
     vec3 i = floor(x); vec3 fr = fract(x); fr = fr * fr * (3.0 - 2.0 * fr);
@@ -1342,8 +1357,22 @@ void dtlOct(vec3 No, float fq, float amp, inout float grain, inout vec3 g) {
     grain += (n - 0.5) * amp * w;
     g += gg * amp * w;
 }
+// Clouds are vapour, so they never hold one shape: two layers of the same cloud map slide past each other very slowly, and their edges
+// wobble a little as the vapour churns. The clouds sit on the same spherical coordinates as the ground, so they turn with the planet.
+vec4 cloudAt(sampler2D tex, vec2 uv, vec3 No, float t, float lum) {
+    vec3 q = No * 5.0;
+    vec2 w1 = vec2(dtlN(q + vec3(t * 0.013, 0.0, 0.0)) - 0.5, dtlN(q + vec3(7.3, t * 0.011, 0.0)) - 0.5) * 0.010;
+    vec2 w2 = vec2(dtlN(q * 1.7 + vec3(3.1, 0.0, t * 0.012)) - 0.5, dtlN(q * 1.7 + vec3(0.0, 9.7, t * 0.014)) - 0.5) * 0.008;
+    vec4 a = texture2D(tex, uv + vec2(t * 0.00018, 0.0) + w1);
+    vec4 b = texture2D(tex, uv + vec2(0.37 - t * 0.00010, 0.11) + w2);
+    float la = mix(a.a, dot(a.rgb, vec3(0.3333)), lum);
+    float lb = mix(b.a, dot(b.rgb, vec3(0.3333)), lum);
+    float al = clamp(la * (0.55 + 0.9 * lb), 0.0, 1.0);
+    return vec4(mix(a.rgb, vec3(al), lum), al);
+}
 void main() {
     vec4 c = texture2D(uMap, vUv);
+    if (uMorph > 0.5 && uAlphaMode > 0.5) { c = cloudAt(uMap, vUv, normalize(vObjNormal), uTime, uAlphaLum); }
     vec3 albedo = pow(c.rgb, vec3(2.2));
     albedo = mix(albedo, vec3(0.93), uAlphaLum);
     vec3 No = normalize(vObjNormal);
@@ -1384,7 +1413,9 @@ void main() {
         float shE = -dot(Lo, T) / lN * 0.02;
         float shN = -dot(Lo, B) / lN * 0.02;
         float cosLat = max(sqrt(max(1.0 - No.y * No.y, 0.0)), 0.05);
-        vec4 cs = texture2D(uCloudMap, vUv + vec2(shE / (6.2831853 * cosLat), shN / 3.1415927));
+        vec2 cuv = vUv + vec2(shE / (6.2831853 * cosLat), shN / 3.1415927);
+        vec4 cs = texture2D(uCloudMap, cuv);
+        if (uMorph > 0.5) { cs = cloudAt(uCloudMap, cuv, No, uTime, uCloudLum); }
         float cm = mix(cs.a, dot(cs.rgb, vec3(0.3333)), uCloudLum);
         shade *= 1.0 - 0.6 * cm;
     }
@@ -1771,7 +1802,7 @@ void main() {
 }`,
 
     // Lens flare, added on top of the finished picture when the Sun is on screen and not hidden: ghosts along the line through the
-    // centre, a faint ring of glare, and a long blue anamorphic streak.
+    // centre and a faint ring of glare (no long smeared streak).
     flareFrag: `
 uniform sampler2D uHdr;
 uniform sampler2D uExposure;
@@ -1796,7 +1827,7 @@ void main() {
     vis = vis / 5.0 * uOn;
     vec2 q = (vUv - uSunUV) * vec2(uAspect, 1.0);
     float rr = length(q);
-    vec3 col = vec3(0.40, 0.58, 1.0) * exp(-abs(q.y) * 70.0) * exp(-abs(q.x) * 1.8) * 0.22;
+    vec3 col = vec3(0.0);
     vec2 ax = vec2(0.5) - uSunUV;
     col += ghost(vUv, uSunUV + ax * 0.55, 0.05, vec3(0.9, 0.6, 0.3)) * 0.10;
     col += ghost(vUv, uSunUV + ax * 1.0, 0.09, vec3(0.4, 0.8, 0.6)) * 0.07;
@@ -1902,20 +1933,16 @@ uniform sampler2D uB1;
 uniform sampler2D uB2;
 uniform sampler2D uB3;
 uniform sampler2D uB4;
-uniform sampler2D uStreak;
 uniform float uBloom;
-uniform float uStreakGain;
-uniform float uCA;
 uniform float uGrain;
 uniform float uTime;
 varying vec2 vUv;
 void main() {
     float ex = texture2D(uExposure, vec2(0.5)).r;
     vec2 d = vUv - 0.5;
-    vec3 c = vec3(texture2D(uHdr, vUv + d * uCA).r, texture2D(uHdr, vUv).g, texture2D(uHdr, vUv - d * uCA).b) * ex;
+    vec3 c = texture2D(uHdr, vUv).rgb * ex;
     vec3 bl = texture2D(uB0, vUv).rgb + texture2D(uB1, vUv).rgb * 0.9 + texture2D(uB2, vUv).rgb * 0.75 + texture2D(uB3, vUv).rgb * 0.55 + texture2D(uB4, vUv).rgb * 0.35;
     c += bl * uBloom;
-    c += texture2D(uStreak, vUv).rgb * vec3(0.55, 0.70, 1.0) * uStreakGain;
     c = aces(c);
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
     c = mix(c * vec3(0.97, 1.0, 1.05), c * vec3(1.04, 1.0, 0.95), smoothstep(0.2, 0.8, l));
@@ -1953,6 +1980,310 @@ var API = { clamp: clamp, mix: mix, smoothstep: smoothstep, noise3: noise3, fbm:
     GAL_X: GAL_X, GAL_Y: GAL_Y, GAL_Z: GAL_Z, starColor: starColor,
     ATMOSPHERES: ATMOSPHERES, SUN_EXTINCTION: SUN_EXTINCTION, GLSL_TONE: GLSL_TONE, MW_FUNC: MW_FUNC,
     GLSL_LIB: GLSL_LIB, GLSL_MAIN: GLSL_MAIN, SOURCES: { earth: EARTH_SRC, clouds: CLOUD_SRC, rocky: ROCKY_SRC, venus: VENUS_SRC, gas: GAS_SRC, sun: SUN_SRC, moon: MOON_SRC, sky: SKY_SRC }, SHADERS: SHADERS };
+/* ---------- everything else in orbit: the satellites and the spacecraft at other worlds ---------- */
+// On 30 September 2026 there were 16,914 working satellites in orbit (Jonathan McDowell's count), 11,143 of them Starlink. The heights and tilts of the
+// shells follow the real constellations; how many sit in each shell is approximate. Heights are squeezed so the whole fleet fits inside the Moon's orbit.
+var SAT_TOTAL = 16914;
+var SAT_GROUPS = [
+    { id: "starlink-53",  name: "Starlink, 53 degree shell",   n: 4600, alt: 550,  inc: 53.0, planes: 72, kind: 0 },
+    { id: "starlink-532", name: "Starlink, 53.2 degree shell", n: 1600, alt: 540,  inc: 53.2, planes: 72, kind: 0 },
+    { id: "starlink-43",  name: "Starlink, 43 degree shell",   n: 2400, alt: 530,  inc: 43.0, planes: 48, kind: 0 },
+    { id: "starlink-70",  name: "Starlink, 70 degree shell",   n: 700,  alt: 570,  inc: 70.0, planes: 36, kind: 0 },
+    { id: "starlink-97",  name: "Starlink, polar shell",       n: 560,  alt: 560,  inc: 97.6, planes: 10, kind: 0 },
+    { id: "starlink-33",  name: "Starlink, 33 degree shell",   n: 1283, alt: 525,  inc: 33.0, planes: 28, kind: 0 },
+    { id: "oneweb",       name: "OneWeb",                      n: 650,  alt: 1200, inc: 87.9, planes: 12, kind: 1 },
+    { id: "kuiper",       name: "Amazon Kuiper",               n: 350,  alt: 610,  inc: 51.9, planes: 18, kind: 1 },
+    { id: "china-mega",   name: "Chinese megaconstellations",  n: 450,  alt: 1000, inc: 70.0, planes: 20, kind: 1 },
+    { id: "iridium",      name: "Iridium",                     n: 75,   alt: 780,  inc: 86.4, planes: 6,  kind: 1 },
+    { id: "globalstar",   name: "Globalstar",                  n: 25,   alt: 1414, inc: 52.0, planes: 8,  kind: 1 },
+    { id: "imaging",      name: "Earth imaging",               n: 700,  alt: 520,  inc: 97.5, planes: 14, kind: 2 },
+    { id: "gps",          name: "GPS",                         n: 31,   alt: 20180, inc: 55.0, planes: 6, kind: 3 },
+    { id: "glonass",      name: "GLONASS",                     n: 24,   alt: 19130, inc: 64.8, planes: 3, kind: 3 },
+    { id: "galileo",      name: "Galileo",                     n: 28,   alt: 23222, inc: 56.0, planes: 3, kind: 3 },
+    { id: "beidou-meo",   name: "BeiDou",                      n: 24,   alt: 21528, inc: 55.0, planes: 3, kind: 3 },
+    { id: "beidou-igso",  name: "BeiDou, inclined geosynchronous", n: 10, alt: 35786, inc: 55.0, planes: 3, kind: 3, geoSync: true },
+    { id: "geo",          name: "Geostationary belt",          n: 610,  alt: 35786, inc: 0.05, planes: 1, kind: 4, geoSync: true },
+    { id: "other-leo",    name: "Everything else in low orbit", n: 0,   alt: 450,  inc: 0,    planes: 0, kind: 5, scatter: true }
+];
+(function () { var rest = 0; SAT_GROUPS.forEach(function (g) { if (!g.scatter) rest += g.n; }); SAT_GROUPS[SAT_GROUPS.length - 1].n = SAT_TOTAL - rest; })();
+// By default only a handful are drawn (the whole swarm is a thick white shell round the Earth): how many from each group is set here. ?sats=all draws every one.
+var SAT_SHOW = { "starlink-53": 2, "starlink-532": 1, "starlink-43": 1, "starlink-70": 1, "starlink-33": 1, "oneweb": 2, "kuiper": 1, "china-mega": 1, "iridium": 1, "imaging": 1, "gps": 3, "glonass": 1, "galileo": 1, "geo": 3, "other-leo": 2 };
+SAT_GROUPS.forEach(function (g) { g.show = SAT_SHOW[g.id] || 0; });
+function satRadius(altKm) {     // scene units (the Earth's radius is 4): the ISS, 420 km up, sits at 5.6, and geostationary orbit at 11
+    var k = altKm <= 2000 ? 1.28 + 0.000286 * altKm : 1.852 + 0.9 * Math.log(altKm / 2000) / Math.log(35786 / 2000);
+    return 4 * k;
+}
+function satRate(r, geoSync) {  // radians per second (backwards in angle = prograde): Kepler's law scaled to the ISS; geosynchronous orbits turn exactly with the Earth
+    return -(geoSync ? Math.abs(bodyById("earth").spin) : ISS_SPEED * Math.pow(ISS_ORBIT / r, 1.5));      // negative: the same way the Earth turns
+}
+function satPosition(o, rate, t) {      // o = [radius, inclination, node, phase]; the position in the Earth's own tilted frame (the shader does the same sum)
+    var a = o[3] + rate * t, x = Math.cos(a) * o[0], z = Math.sin(a) * o[0];
+    var y = -z * Math.sin(o[1]); z = z * Math.cos(o[1]);
+    var cn = Math.cos(o[2]), sn = Math.sin(o[2]);
+    return [x * cn + z * sn, y, -x * sn + z * cn];
+}
+function buildSatellites(seed, shownOnly) {       // shownOnly: just the handful that are drawn by default, spread evenly through each group
+    var rnd = mulberry32(seed || 7), n = 0, k = 0, TAU = Math.PI * 2;
+    function cnt(g) { return shownOnly ? g.show : g.n; }
+    SAT_GROUPS.forEach(function (g) { n += cnt(g); });
+    var orb = new Float32Array(n * 4), rate = new Float32Array(n), kind = new Float32Array(n), starts = {};
+    SAT_GROUPS.forEach(function (g) {
+        var r = satRadius(g.alt), rt = satRate(r, !!g.geoSync), inc = g.inc * Math.PI / 180, planes = Math.max(1, g.planes), per = Math.ceil(g.n / planes);
+        var m = cnt(g); starts[g.id] = k;
+        for (var j = 0; j < m; j++, k++) {
+            var i = shownOnly ? Math.floor(j * g.n / m) : j;
+            var rr = r, ii = inc, rate_i = rt, raan, phase;
+            if (g.scatter) {                                                   // cubesats, small constellations, military and science: all sorts of tilts
+                rr = satRadius(300 + rnd() * 1000); ii = (rnd() < 0.55 ? 0.2 + rnd() * 1.0 : 1.4 + rnd() * 0.3);
+                rate_i = satRate(rr, false); raan = rnd() * TAU; phase = rnd() * TAU;
+            } else if (g.id === "geo") {                                       // along the equator, in clusters over the continents, fixed over the ground
+                ii = (rnd() - 0.5) * 0.05; raan = 0; phase = (Math.floor(rnd() * 14) / 14 + rnd() * 0.04) * TAU;
+            } else {
+                var plane = i % planes, slot = Math.floor(i / planes);
+                raan = plane / planes * TAU + (rnd() - 0.5) * 0.02; phase = (slot + ((plane * 0.37) % 1) + (rnd() - 0.5) * 0.15) / per * TAU;
+            }
+            orb[k * 4] = rr; orb[k * 4 + 1] = ii; orb[k * 4 + 2] = raan; orb[k * 4 + 3] = phase; rate[k] = rate_i; kind[k] = g.kind;
+        }
+    });
+    return { count: n, orb: orb, rate: rate, kind: kind, starts: starts };
+}
+// Spacecraft at other worlds, as of 22 October 2026. host = the world they orbit, a = orbit size in that world's radii, e = how stretched, inc = tilt,
+// period = seconds for one lap on screen (the real periods run from two hours to weeks, so only their order is kept). status: active, arriving (on
+// its way in), lost (contact lost) or ended / flyby (a mission that is over, drawn as a faint ghost so each world still has its story).
+function leoCraft(id, name, kind, alt, inc, raan, phase, size) {
+    var r = satRadius(alt); return { id: id, name: name, kind: kind, host: "earth", status: "active", a: r / 4, e: 0, inc: inc, raan: raan, argp: 0, phase: phase, period: 2 * Math.PI / -satRate(r, false), size: size };
+}
+var CRAFT = [
+    leoCraft("tiangong", "Tiangong space station", "tiangong", 390, 41.5, 2.2, 1.0, 0.95),
+    leoCraft("hubble", "Hubble Space Telescope", "hubble", 540, 28.5, 0.7, 3.4, 0.75),
+    { id: "jwst", name: "James Webb Space Telescope (at the Sun-Earth L2 point)", kind: "jwst", host: "earth", status: "active", lagrange: "L2", dist: 14, size: 1.2 },
+    { id: "soho", name: "SOHO solar observatory (at the Sun-Earth L1 point)", kind: "probe", host: "earth", status: "active", lagrange: "L1", dist: 14, size: 0.55 },
+    { id: "lro", name: "Lunar Reconnaissance Orbiter", kind: "probe", host: "moon", status: "active", a: 1.7, e: 0.04, inc: 90, raan: 0.3, argp: 0, phase: 0.2, period: 10, size: 0.45 },
+    { id: "danuri", name: "Danuri (Korea Pathfinder Lunar Orbiter)", kind: "probe", host: "moon", status: "active", a: 2.0, e: 0.02, inc: 88, raan: 1.2, argp: 0, phase: 2.0, period: 12, size: 0.45 },
+    { id: "chandrayaan-2", name: "Chandrayaan-2 orbiter", kind: "probe", host: "moon", status: "active", a: 2.3, e: 0.05, inc: 90, raan: 2.4, argp: 0, phase: 4.0, period: 14, size: 0.45 },
+    { id: "queqiao-2", name: "Queqiao-2 relay satellite", kind: "probe", host: "moon", status: "active", a: 4.2, e: 0.72, inc: 55, raan: 0.9, argp: 1.0, phase: 1.5, period: 40, size: 0.5 },
+    { id: "mercury-bepicolombo", name: "BepiColombo (arriving: orbit entry planned 21 November 2026)", kind: "bepicolombo", host: "mercury", status: "arriving", a: 6.5, e: 0.85, inc: 80, raan: 0.5, argp: 0.4, phase: 2.5, period: 90, size: 0.7 },
+    { id: "mars-odyssey", name: "2001 Mars Odyssey", kind: "probe", host: "mars", status: "active", a: 1.7, e: 0.02, inc: 93, raan: 0.2, argp: 0, phase: 0.5, period: 9, size: 0.5 },
+    { id: "mro", name: "Mars Reconnaissance Orbiter", kind: "probe", host: "mars", status: "active", a: 1.9, e: 0.01, inc: 93, raan: 0.9, argp: 0, phase: 2.2, period: 10, size: 0.5 },
+    { id: "tgo", name: "ExoMars Trace Gas Orbiter", kind: "probe", host: "mars", status: "active", a: 2.15, e: 0.01, inc: 74, raan: 1.9, argp: 0, phase: 4.1, period: 11, size: 0.5 },
+    { id: "mars-express", name: "Mars Express", kind: "probe", host: "mars", status: "active", a: 3.6, e: 0.57, inc: 87, raan: 2.7, argp: 1.2, phase: 0.8, period: 28, size: 0.5 },
+    { id: "tianwen-1", name: "Tianwen-1 orbiter", kind: "probe", host: "mars", status: "active", a: 4.0, e: 0.6, inc: 87, raan: 5.1, argp: 2.0, phase: 3.3, period: 34, size: 0.5 },
+    { id: "hope", name: "Hope (Emirates Mars Mission)", kind: "probe", host: "mars", status: "active", a: 5.6, e: 0.5, inc: 25, raan: 4.2, argp: 0.5, phase: 5.2, period: 60, size: 0.55 },
+    { id: "maven", name: "MAVEN (contact lost December 2025, declared dead 3 June 2026)", kind: "probe", host: "mars", status: "lost", a: 2.7, e: 0.35, inc: 75, raan: 3.6, argp: 0.8, phase: 1.1, period: 20, size: 0.5 },
+    { id: "juno", name: "Juno", kind: "juno", host: "jupiter", status: "active", a: 4.0, e: 0.85, inc: 90, raan: 1.0, argp: 0.3, phase: 0.6, period: 70, size: 1.0 },
+    { id: "cassini", name: "Cassini (mission ended 2017)", kind: "probe", host: "saturn", status: "ended", a: 3.1, e: 0.7, inc: 63, raan: 2.0, argp: 0.5, phase: 1.0, period: 40, size: 0.8 },
+    { id: "magellan", name: "Magellan (mission ended 1994)", kind: "probe", host: "venus", status: "ended", a: 1.6, e: 0.3, inc: 86, raan: 0.4, argp: 0, phase: 2.0, period: 14, size: 0.6 },
+    { id: "voyager-2-uranus", name: "Voyager 2 (flew past Uranus in 1986)", kind: "probe", host: "uranus", status: "flyby", a: 6.0, e: 0.95, inc: 20, raan: 1.4, argp: 0.2, phase: 2.0, period: 150, size: 0.8 },
+    { id: "voyager-2-neptune", name: "Voyager 2 (flew past Neptune in 1989)", kind: "probe", host: "neptune", status: "flyby", a: 6.0, e: 0.95, inc: 30, raan: 3.0, argp: 0.2, phase: 3.0, period: 170, size: 0.8 },
+    { id: "new-horizons", name: "New Horizons (flew past Pluto in 2015)", kind: "probe", host: "pluto", status: "flyby", a: 7.0, e: 0.95, inc: 10, raan: 0.8, argp: 0.2, phase: 1.0, period: 120, size: 0.6 },
+    { id: "parker", name: "Parker Solar Probe", kind: "parker", host: "sun", status: "active", a: 2.0, e: 0.45, inc: 3, raan: 0.6, argp: 0.5, phase: 0.4, period: 25, size: 1.4 }
+];
+function hostRadius(host) { return host === "moon" ? MOON_R : host === "sun" ? bodyById("sun").r : bodyById(host).r; }
+function craftLocal(c, t) {     // where a spacecraft is relative to the world it orbits: a tilted ellipse, solved with Kepler's equation
+    var M = c.phase - 2 * Math.PI * t / c.period, e = c.e || 0, E = M, i;
+    for (i = 0; i < 8; i++) E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    var a = c.a * hostRadius(c.host), x = a * (Math.cos(E) - e), z = a * Math.sqrt(1 - e * e) * Math.sin(E);
+    var cw = Math.cos(c.argp || 0), sw = Math.sin(c.argp || 0), x2 = x * cw + z * sw, z2 = -x * sw + z * cw;
+    var inc = (c.inc || 0) * Math.PI / 180, y = -z2 * Math.sin(inc), z3 = z2 * Math.cos(inc);
+    var cn = Math.cos(c.raan || 0), sn = Math.sin(c.raan || 0);
+    return [x2 * cn + z3 * sn, y, -x2 * sn + z3 * cn];
+}
+function lagrangeLocal(c, t, earthPos) {    // JWST and SOHO sit on the Sun-Earth line, a little way out, and drift round it in a slow halo
+    var sd = vnorm(vscale(earthPos, -1)), sign = c.lagrange === "L1" ? 1 : -1, up = [0, 1, 0], u = vnorm(vcross(sd, up)), th = 2 * Math.PI * t / 30;
+    return vadd(vscale(sd, sign * c.dist), vadd(vscale(u, 1.6 * Math.cos(th)), vscale(up, 0.9 * Math.sin(th))));
+}
+SHADERS.satVertex = `
+uniform float uTime;
+uniform vec3 uEarth;
+uniform float uPxScale;
+uniform float uGain;
+uniform float uSize;
+attribute vec4 aOrb;
+attribute vec2 aMeta;
+varying vec3 vColor;
+varying float vLit;
+vec3 kindColor(float k) {
+    if (k < 0.5) { return vec3(0.75, 0.88, 1.0); }
+    if (k < 1.5) { return vec3(0.55, 1.0, 0.95); }
+    if (k < 2.5) { return vec3(0.75, 1.0, 0.65); }
+    if (k < 3.5) { return vec3(1.0, 0.92, 0.55); }
+    if (k < 4.5) { return vec3(1.0, 0.68, 0.40); }
+    return vec3(0.9, 0.9, 0.95);
+}
+void main() {
+    float a = aOrb.w + aMeta.x * uTime;
+    vec3 p = vec3(cos(a), 0.0, sin(a)) * aOrb.x;
+    float ci = cos(aOrb.y);
+    float si = sin(aOrb.y);
+    p = vec3(p.x, -p.z * si, p.z * ci);
+    float cn = cos(aOrb.z);
+    float sn = sin(aOrb.z);
+    p = vec3(p.x * cn + p.z * sn, p.y, -p.x * sn + p.z * cn);
+    vec4 wp = modelMatrix * vec4(p, 1.0);
+    vec3 rel = wp.xyz - uEarth;
+    vec3 sd = normalize(-uEarth);
+    float along = dot(rel, sd);
+    float off = length(rel - sd * along);
+    vLit = (along < 0.0 && off < 4.0) ? 0.05 : 1.0;
+    vColor = kindColor(aMeta.y) * uGain;
+    vec4 mv = viewMatrix * wp;
+    gl_PointSize = clamp(uSize * uPxScale / max(-mv.z, 0.5), 1.5, 7.0);
+    gl_Position = projectionMatrix * mv;
+}`;
+SHADERS.satFragment = GLSL_TONE + `
+uniform float uLDR;
+uniform float uExpLDR;
+varying vec3 vColor;
+varying float vLit;
+void main() {
+    vec2 q = (gl_PointCoord - vec2(0.5)) * 2.0;
+    float r2 = dot(q, q);
+    if (r2 > 1.0) { discard; }
+    float core = exp(-r2 * 2.5);
+    gl_FragColor = vec4(ldrOut(vColor * core * vLit, uLDR, uExpLDR), 1.0);
+}`;
+API.SAT_TOTAL = SAT_TOTAL; API.SAT_GROUPS = SAT_GROUPS; API.satRadius = satRadius; API.satRate = satRate; API.satPosition = satPosition; API.buildSatellites = buildSatellites;
+API.CRAFT = CRAFT; API.craftLocal = craftLocal; API.lagrangeLocal = lagrangeLocal; API.hostRadius = hostRadius;
+
+/* ---------- a Falcon 9 launch every three minutes: it rises, drops its booster, the booster lands on a ship, and the Dragon chases the ISS and docks ---------- */
+// The Earth's continents here are generated, not traced from a real map, so the pad stands on a generated east-facing coast (with open sea to the east).
+// Everything is worked out in the Earth's own turning frame (so the rocket stands on the ground and rises with it) and then turned into world positions.
+// The times are compressed far beyond real life (a real Dragon takes about a day to reach the ISS), so only the order of events is real.
+var FALCON_T = { cycle: 180, start: 8, sep: 8, ins: 14, blend: 22, hold: 46, dock: 54, undock: 106, gone: 116 };     // seconds after liftoff; a new launch every 180 s
+var FALCON_PSI_LAND = 0.16, FALCON_DOCK = 0.831, FALCON_LEAD = 0.418, ISS_INC = 0.9;      // the docking port is on the trailing end of the ISS, so the Dragon waits behind it (+0.418 radians) and comes up from there
+function falconT0(clock) { return Math.floor(clock / FALCON_T.cycle) * FALCON_T.cycle + FALCON_T.start; }
+function smoother(x) { x = x < 0 ? 0 : x > 1 ? 1 : x; return x * x * x * (x * (x * 6 - 15) + 10); }
+function wrapPi(x) { return Math.atan2(Math.sin(x), Math.cos(x)); }
+function isLandColor(c) { return c[0] + c[1] > c[2] * 1.15; }
+var falconSiteCache = null;
+function falconSite() {
+    if (falconSiteCache) return falconSiteCache;
+    var D = Math.PI / 180, best = null, bestScore = 1e9, la, L;
+    function land(lon, lat) { return isLandColor(earthColor(lon * D, lat * D)); }
+    for (la = 14; la <= 42; la += 2) for (L = 0; L < 360; L += 2) {
+        if (land(L, la) && land(L - 3, la) && !land(L + 3, la) && !land(L + 6, la) && !land(L + 9, la) && !land(L + 12, la)) {
+            var score = Math.abs(la - 28.5) * 3 + Math.abs(((L - 279.4 + 540) % 360) - 180);
+            if (score < bestScore) { bestScore = score; best = { lat: la, lon: L }; }
+        }
+    }
+    if (!best) best = { lat: 28, lon: 280 };
+    var lon = best.lon * D, lat = best.lat * D, dir = [-Math.cos(lon) * Math.cos(lat), Math.sin(lat), Math.sin(lon) * Math.cos(lat)];
+    falconSiteCache = { lat: best.lat, lon: best.lon, dir: dir, east: vnorm(vcross([0, 1, 0], dir)) };
+    return falconSiteCache;
+}
+function toWorld(v, phi, tilt) {      // from the Earth's turning frame to the world: spin about the pole, then lean the pole over
+    var c = Math.cos(phi), s = Math.sin(phi), x = v[0] * c + v[2] * s, z = -v[0] * s + v[2] * c, y = v[1], ct = Math.cos(tilt), st = Math.sin(tilt);
+    return [x * ct - y * st, x * st + y * ct, z];
+}
+function surfaceDirEast(site, psi) { return vadd(vscale(site.dir, Math.cos(psi)), vscale(site.east, Math.sin(psi))); }     // a point psi radians east of the pad
+function toFixed(v, phi, tilt) {      // the other way round: a world position (relative to the Earth's centre) back into the Earth's own turning frame
+    var ct = Math.cos(tilt), st = Math.sin(tilt), x1 = v[0] * ct + v[1] * st, y = -v[0] * st + v[1] * ct, c = Math.cos(phi), s = Math.sin(phi);
+    return [x1 * c - v[2] * s, y, x1 * s + v[2] * c];
+}
+function falconRef(site, s) {         // the second stage's centre on the way up, s from 0 (on the pad) to 1 (in orbit)
+    return vscale(surfaceDirEast(site, 0.5 * Math.pow(s, 2.4)), 4 + 0.52 + 0.68 * Math.pow(s, 1.6));
+}
+function falconAxis(site, s) {        // which way the rocket points: straight up at first, then it leans over onto its path
+    var a = Math.min(s, 0.96), v = vnorm(vsub(falconRef(site, a + 0.04), falconRef(site, a))), up = vnorm(falconRef(site, s)), w = smoother(s / 0.4);
+    return vnorm(vadd(vscale(up, 1 - w), vscale(v, w)));
+}
+function issAngle(t) { return 0.4 - ISS_SPEED * t; }
+function issRelAt(t) { return issFrame(-t, [0, 0, 0]); }       // the ISS relative to the Earth's centre (the world runs its orbital clock backwards)
+function issPlanePoint(psi, r) { return [Math.cos(psi) * r, -Math.sin(psi) * r * Math.sin(ISS_INC), Math.sin(psi) * r * Math.cos(ISS_INC)]; }
+function slerpPos(a, b, w) {
+    var ra = vlen(a), rb = vlen(b), ua = vscale(a, 1 / ra), ub = vscale(b, 1 / rb), d = Math.max(-1, Math.min(1, vdot(ua, ub))), an = Math.acos(d), r = ra + (rb - ra) * w;
+    if (an < 1e-6) return vscale(ua, r);
+    var sa = Math.sin(an);
+    return vscale(vadd(vscale(ua, Math.sin((1 - w) * an) / sa), vscale(ub, Math.sin(w * an) / sa)), r);
+}
+function issLocal(f, off) { var bz = f.tangent, by = f.radial, bx = vnorm(vcross(by, bz)); return vadd(f.pos, vadd(vscale(bx, off[0]), vadd(vscale(by, off[1]), vscale(bz, off[2])))); }
+function falconPlan(t0, phiAt, tNow, site) {       // the numbers the Dragon's flight needs, worked out once for a launch (phiAt is the Earth's turn at time tNow)
+    var spin = Math.abs(bodyById("earth").spin), tilt = bodyById("earth").tilt, T = FALCON_T, tI = t0 + T.ins, tB = t0 + T.blend, Tb = T.blend - T.ins;
+    var endF = vadd(falconRef(site, 1), vscale(falconAxis(site, 1), 0.18));
+    var c = toWorld(endF, phiAt + spin * (tI - tNow), tilt), e1 = [1, 0, 0], e2 = [0, -Math.sin(ISS_INC), Math.cos(ISS_INC)], n = vcross(e1, e2);
+    var z0 = vdot(c, n), cp = vsub(c, vscale(n, z0)), rho = vlen(cp), psiC = Math.atan2(vdot(cp, e2), vdot(cp, e1));
+    // after insertion the Dragon speeds up smoothly from turning with the Earth to flying at the ISS's own orbital speed, along the ISS's orbit
+    function Anat(s) { var x = Math.min(1, Math.max(0, s / Tb)); return spin * s + (ISS_SPEED - spin) * Tb * (Math.pow(x, 6) - 3 * Math.pow(x, 5) + 2.5 * Math.pow(x, 4)); }
+    var lagNat = wrapPi(psiC - Anat(Tb) - issAngle(tB)), dB = Math.abs(lagNat) < 0.5 ? (lagNat < 0 ? -0.5 : 0.5) : lagNat;      // never ends up right next to the station
+    var plan = { endF: endF, dB: dB, adj: lagNat - dB, dT: dB < 0 ? FALCON_LEAD - 2 * Math.PI : FALCON_LEAD, rIns: 4 + 0.52 + 0.68, t0: t0, spin: spin, tilt: tilt, phiAt: phiAt, tNow: tNow, psiC: psiC, R0: vlen(c), beta0: Math.atan2(z0, rho), e1: e1, e2: e2, n: n, Anat: Anat, Tb: Tb };
+    plan.rr = function (tt) { return plan.rIns + (ISS_ORBIT - 0.05 - plan.rIns) * smoother((tt - tI) / (T.hold - T.ins)); };
+    plan.chase = function (tt) {       // if it starts ahead of the station it goes the long way round, so it never cuts across the station's own place in its orbit
+        var dl = tt < tB ? dB : dB + (plan.dT - dB) * smoother((tt - tB) / (T.hold - T.blend));
+        return issPlanePoint(issAngle(tt) + dl, plan.rr(tt));
+    };
+    var fH = issRelAt(t0 + T.hold), pH = plan.chase(t0 + T.hold), dd = vsub(pH, fH.pos), bx = vnorm(vcross(fH.radial, fH.tangent));
+    plan.offH = [vdot(dd, bx), vdot(dd, fH.radial), vdot(dd, fH.tangent)];
+    return plan;
+}
+function dragonPos(t, plan, site) {
+    var T = FALCON_T, t0 = plan.t0, tau = t - t0;
+    if (tau < T.ins) { var s = Math.max(0, tau / T.ins); return toWorld(vadd(falconRef(site, s), vscale(falconAxis(site, s), 0.18)), plan.phiAt + plan.spin * (t - plan.tNow), plan.tilt); }
+    if (tau < T.blend) {
+        var x = (tau - T.ins) / plan.Tb, sm = smoother(x), psi = plan.psiC - (plan.Anat(tau - T.ins) + plan.adj * sm);
+        var r = plan.R0 + (plan.rr(t0 + T.blend) - plan.R0) * sm, beta = plan.beta0 * (1 - sm);      // it comes down into the ISS's orbit plane by angle, so its distance from the Earth's centre never dips
+        var ci = r * Math.cos(beta);
+        return vadd(vadd(vscale(plan.e1, ci * Math.cos(psi)), vscale(plan.e2, ci * Math.sin(psi))), vscale(plan.n, r * Math.sin(beta)));
+    }
+    if (tau < T.hold) return plan.chase(t);
+    var f = issRelAt(t), off;
+    if (tau < T.dock) { var w = smoother((tau - T.hold) / (T.dock - T.hold)); off = [plan.offH[0] * (1 - w), plan.offH[1] * (1 - w), plan.offH[2] + (FALCON_DOCK - plan.offH[2]) * w]; }
+    else if (tau < T.undock) off = [0, 0, FALCON_DOCK];
+    else off = [0, 0, FALCON_DOCK + 1.8 * smoother((tau - T.undock) / 6)];
+    return issLocal(f, off);
+}
+function falconChoose(cycleStart, phiStart, site) {       // each launch cycle picks the first liftoff time (8 to 56 seconds in) whose whole chase keeps well clear of the station
+    var spin = Math.abs(bodyById("earth").spin), T = FALCON_T, best = null, bestClear = -1, t0, tau;
+    for (t0 = cycleStart + T.start; t0 <= cycleStart + T.start + 48; t0 += 0.5) {
+        var plan = falconPlan(t0, phiStart + spin * (t0 - cycleStart), t0, site), clear = 99;
+        for (tau = T.ins; tau <= T.hold; tau += 0.5) clear = Math.min(clear, vlen(vsub(dragonPos(t0 + tau, plan, site), issRelAt(t0 + tau).pos)));
+        var cand = { t0: t0, plan: plan, clear: clear };
+        if (clear >= 2.2) return cand;
+        if (clear > bestClear) { bestClear = clear; best = cand; }
+    }
+    return best;
+}
+function falconState(t, t0, phi, site, plan) {       // everything at scene time t, relative to the Earth's centre; plan comes from falconPlan
+    var T = FALCON_T, tau = t - t0, tilt = plan.tilt, spin = plan.spin, R = 4, out = { phase: "idle", booster: null, stage2: null, dragon: null, ship: null };
+    if (tau < -4 || tau > T.gone) return out;
+    function W(v, tt) { return toWorld(v, phi + spin * ((tt === undefined ? t : tt) - t), tilt); }
+    out.phase = tau < 0 ? "on the pad" : tau < T.sep ? "liftoff" : tau < T.ins ? "stage separation and booster return" : tau < T.hold ? "dragon chasing the ISS" : tau < T.dock ? "final approach" : tau < T.undock ? "docked" : "departing";
+    var s = Math.max(0, Math.min(1, tau / T.ins)), ref = falconRef(site, s), ax = falconAxis(site, s), sSep = T.sep / T.ins, boost = 0;
+    // the first stage, attached and then on its own
+    if (tau < T.sep + 25) {
+        var cen, axis, plumeB, legs = 0, scale = 1;
+        if (tau < T.sep) { cen = vadd(ref, vscale(ax, -0.31)); axis = ax; plumeB = smoother((tau + 2) / 2); }
+        else {
+            var tb = Math.min(1, (tau - T.sep) / 16), psiSep = 0.5 * Math.pow(sSep, 2.4), hSep = 0.68 * Math.pow(sSep, 1.6);
+            var psi = psiSep + (FALCON_PSI_LAND - psiSep) * smoother(tb), h = hSep * Math.pow(1 - tb, 1.5) + 0.55 * Math.sin(Math.PI * tb) * (1 - tb);
+            var dirF = surfaceDirEast(site, psi), pathF = vscale(dirF, R + 0.21 + h), sepRef = falconRef(site, sSep), sepAx = falconAxis(site, sSep);
+            var off = vscale(vsub(surfaceDirEast(site, psiSep), sepAx), 0.31);
+            cen = vadd(pathF, vscale(off, 1 - smoother(tb / 0.3)));
+            var fl = smoother((tb - 0.05) / 0.2); axis = vnorm(vadd(vscale(sepAx, 1 - fl), vscale(dirF, fl)));
+            function bump(x, a, b) { return smoother((x - a) / 0.03) * (1 - smoother((x - b) / 0.03)); }
+            plumeB = tau >= T.sep + 16 ? 0 : Math.max(0.9 * bump(tb, 0.1, 0.22), 0.5 * bump(tb, 0.55, 0.7), bump(tb, 0.84, 0.99));
+            legs = smoother((tb - 0.78) / 0.12);
+            if (tau > T.sep + 22) scale = 1 - smoother((tau - (T.sep + 22)) / 3);
+        }
+        out.booster = { pos: W(cen), axis: W(axis), plume: plumeB, legs: legs, scale: scale };
+    }
+    // the second stage
+    if (tau < T.ins + 7) out.stage2 = { pos: W(ref), axis: W(ax), plume: tau < T.sep ? 0 : tau < T.ins ? 0.6 : 0, scale: tau < T.ins + 3 ? 1 : 1 - smoother((tau - (T.ins + 3)) / 4) };
+    // the ship the booster lands on
+    if (tau < T.sep + 29) { var sd = surfaceDirEast(site, FALCON_PSI_LAND); out.ship = { pos: W(vscale(sd, R + 0.012)), axis: W(sd), scale: tau < T.sep + 25 ? 1 : 1 - smoother((tau - (T.sep + 25)) / 4) }; }
+    // the Dragon
+    if (tau < T.undock + 8) {
+        var p = dragonPos(t, plan, site), p2 = dragonPos(t + 0.05, plan, site), vel = vnorm(vsub(p2, p)), dax;
+        if (tau < T.ins) dax = W(ax);
+        else if (tau < T.hold - 3) dax = vel;
+        else { var f2 = issRelAt(t), nose = vscale(f2.tangent, -1), k = smoother((tau - (T.hold - 3)) / 3);      // nose first towards the station: it flies the same way the ISS does
+               dax = tau >= T.hold ? nose : vnorm(vadd(vscale(vel, 1 - k), vscale(nose, k))); }
+        out.dragon = { pos: p, axis: dax, panels: smoother((tau - T.ins - 1) / 3), scale: tau < T.undock + 4 ? 1 : 1 - smoother((tau - (T.undock + 4)) / 4) };
+    }
+    return out;
+}
+API.falconChoose = falconChoose; API.toFixed = toFixed; API.FALCON_T = FALCON_T; API.falconT0 = falconT0; API.falconSite = falconSite; API.falconPlan = falconPlan; API.falconState = falconState; API.falconRef = falconRef; API.toWorld = toWorld;
+API.issRelAt = issRelAt; API.dragonPos = dragonPos; API.FALCON_DOCK = FALCON_DOCK; API.smoother = smoother;
+
 if (typeof window !== "undefined") window.CosmicPipeline = API;
 if (typeof document === "undefined" || typeof THREE === "undefined") {
     if (typeof document !== "undefined") {
@@ -2096,7 +2427,7 @@ function planetUniforms(id) {
         uUseNormal: { value: 0 }, uUseSpecMap: { value: 0 }, uUseNightMap: { value: 0 }, uNight: { value: 0 }, uAlphaMode: { value: 0 }, uAlphaLum: { value: 0 },
         uSpecAmt: { value: 0 }, uSpecPower: { value: 110 }, uAmbient: { value: 0.03 }, uLimb: { value: 0 }, uCloudShadow: { value: 0 }, uCloudLum: { value: 0 },
         uRingShadow: { value: 0 }, uRingNormal: { value: new THREE.Vector3(0, 1, 0) }, uRingRange: { value: new THREE.Vector2(0, 1) }, uSunExt: { value: new THREE.Vector3(0, 0, 0) },
-        uDetail: { value: 0 }, uRpx: { value: 0 },
+        uDetail: { value: 0 }, uRpx: { value: 0 }, uMorph: { value: 0 },
         uSunPower: sharedSun, uTime: sharedTime, uLDR: sharedLDR, uExpLDR: sharedExp, uVelocity: sharedVel, uMotionView: sharedMotion };
 }
 function planetMaterial(u, transparent) {
@@ -2109,7 +2440,7 @@ BODIES.forEach(function (b) {
     var u = planetUniforms(b.id), group = new THREE.Group(), tilt = new THREE.Group();
     var mesh = new THREE.Mesh(new THREE.SphereGeometry(b.r, seg(b.id), seg(b.id)), planetMaterial(u, false));
     tilt.rotation.z = b.tilt; tilt.add(mesh); group.add(tilt); scene.add(group);
-    u.uDetail.value = DETAIL * (DETAIL_BASE[b.id] || 0);
+    u.uDetail.value = DETAIL * (DETAIL_BASE[b.id] || 0); if (b.id === "earth") u.uMorph.value = 1;      // Earth's cloud shadows follow the same changing clouds
     P[b.id] = { group: group, tilt: tilt, mesh: mesh, u: u, spin: b.spin, r: b.r, tiltAngle: b.tilt };
 });
 var moonU = planetUniforms("moon"); moonU.uDetail.value = DETAIL; var moon = new THREE.Mesh(new THREE.SphereGeometry(MOON_R, seg("moon"), seg("moon")), planetMaterial(moonU, false)); scene.add(moon);
@@ -2153,7 +2484,7 @@ var auroraMat = new THREE.ShaderMaterial({ uniforms: { uAxis: { value: new THREE
 var aurora = new THREE.Mesh(new THREE.SphereGeometry(4 * 1.035, Math.round(96 * SEG), Math.round(96 * SEG)), auroraMat); aurora.renderOrder = 4; P.earth.group.add(aurora);
 
 // Earth clouds: the same lit planet shader, with the cloud map as transparency
-var cloudU = planetUniforms("earth"); cloudU.uAlphaMode.value = 1; cloudU.uAmbient.value = 0.02;
+var cloudU = planetUniforms("earth"); cloudU.uAlphaMode.value = 1; cloudU.uAmbient.value = 0.02; cloudU.uMorph.value = 1;      // vapour: it keeps slowly changing shape
 var clouds = new THREE.Mesh(new THREE.SphereGeometry(4 * 1.010, seg("earth"), seg("earth")), planetMaterial(cloudU, true));
 clouds.renderOrder = 2; clouds.visible = false; P.earth.tilt.add(clouds);
 
@@ -2191,14 +2522,19 @@ function panelTexture(base, line) {
 var panelTex = { gold: panelTexture("#a8581a", "#e0a85c"), blue: panelTexture("#16226a", "#5a6bc0") };
 var issGroup = new THREE.Group(), issParts = new THREE.Group(), issMats = {};
 issGroup.add(issParts);
+var issPivots = {};                  // each big solar array turns on its own joint to follow the Sun
 ISS_PARTS.forEach(function (p) {
     var key = p.color + ":" + (p.panel || "");
     var m = issMats[key] || (issMats[key] = new THREE.MeshStandardMaterial({ color: new THREE.Color(p.color).convertSRGBToLinear(), map: p.panel ? panelTex[p.panel] : null,
-        emissive: new THREE.Color(p.panel === "gold" ? 0x2a1205 : p.panel === "blue" ? 0x0a0e24 : 0x000000).convertSRGBToLinear(), metalness: 0.55, roughness: 0.42 }));
+        emissive: new THREE.Color(p.panel === "gold" ? 0x2a1205 : p.panel === "blue" ? 0x0a0e24 : 0x000000).convertSRGBToLinear(), metalness: 0.55, roughness: 0.42, side: p.panel ? THREE.DoubleSide : THREE.FrontSide }));
     var geo = p.kind === "box" ? new THREE.BoxGeometry(p.size[0], p.size[1], p.size[2]) : p.kind === "sphere" ? new THREE.SphereGeometry(p.size[0], 32, 24) : new THREE.CylinderGeometry(p.size[0], p.size[0], p.size[1], 40);
-    var mesh = new THREE.Mesh(geo, m);
-    if (p.kind === "cyl") { if (p.rot) mesh.rotation.z = Math.PI / 2; else mesh.rotation.x = Math.PI / 2; }
-    mesh.position.set(p.pos[0], p.pos[1], p.pos[2]); issParts.add(mesh);
+    var mesh = new THREE.Mesh(geo, m), parent = issParts;
+    if (p.kind === "cyl" && p.axis !== "y") { if (p.rot) mesh.rotation.z = Math.PI / 2; else mesh.rotation.x = Math.PI / 2; }
+    if (p.array !== undefined) {
+        var pv = issPivots[p.array]; if (!pv) { pv = issPivots[p.array] = new THREE.Group(); pv.position.set(p.array, 0, 0); issParts.add(pv); }
+        parent = pv; mesh.position.set(p.pos[0] - p.array, p.pos[1], p.pos[2]);
+    } else mesh.position.set(p.pos[0], p.pos[1], p.pos[2]);
+    parent.add(mesh);
 });
 issGroup.scale.setScalar(0.26); scene.add(issGroup);
 
@@ -2293,6 +2629,147 @@ function bakeStep() {
 }
 
 /* ---------- every custom shader is test-compiled up front; anything that cannot compile is swapped for something simpler ---------- */
+/* ---------- the satellites, and the spacecraft at the other worlds ---------- */
+// 16,914 working satellites (the real count on 30 September 2026) are drawn by the graphics card as points, each on its own orbit, and the ones
+// in the Earth's shadow go dark. Spacecraft that are really out there (and the ghosts of finished missions) orbit their own worlds. ?sats=0 leaves
+// them all out, and typing  labels  switches their names on and off.
+var SATS = !/[?&]sats=0/.test(location.search), SATS_ALL = /[?&]sats=all/.test(location.search);      // by default just a handful of satellites and the working spacecraft; ?sats=all adds the whole swarm and every spacecraft
+var satU = { uTime: sharedTime, uEarth: { value: new THREE.Vector3() }, uPxScale: { value: 1000 }, uGain: { value: SATS_ALL ? 0.7 : 1.0 }, uSize: { value: SATS_ALL ? 0.07 : 0.16 }, uLDR: sharedLDR, uExpLDR: sharedExp };
+var satMat = new THREE.ShaderMaterial({ uniforms: satU, vertexShader: SHADERS.satVertex, fragmentShader: SHADERS.satFragment, transparent: true, depthWrite: false,
+    blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor });
+var satFleet = window.CosmicPipeline.buildSatellites(7, !SATS_ALL), satPoints = null;
+if (SATS) {
+    var satGeo = new THREE.BufferGeometry(), satMeta = new Float32Array(satFleet.count * 2);
+    for (var si = 0; si < satFleet.count; si++) { satMeta[si * 2] = satFleet.rate[si]; satMeta[si * 2 + 1] = satFleet.kind[si]; }
+    satGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(satFleet.count * 3), 3));      // not used: the shader works the position out from the orbit
+    satGeo.setAttribute("aOrb", new THREE.BufferAttribute(satFleet.orb, 4));
+    satGeo.setAttribute("aMeta", new THREE.BufferAttribute(satMeta, 2));
+    satPoints = new THREE.Points(satGeo, satMat); satPoints.frustumCulled = false; satPoints.renderOrder = 1; P.earth.tilt.add(satPoints);
+}
+var CM = {
+    foil: new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.7, roughness: 0.4, emissive: 0x2a1f08 }),
+    white: new THREE.MeshStandardMaterial({ color: 0xe6e9ee, metalness: 0.2, roughness: 0.6, emissive: 0x15171a }),
+    silver: new THREE.MeshStandardMaterial({ color: 0xb8bec8, metalness: 0.8, roughness: 0.35, emissive: 0x101216 }),
+    panel: new THREE.MeshStandardMaterial({ color: 0x1b2f66, metalness: 0.5, roughness: 0.4, emissive: 0x0a1330, side: THREE.DoubleSide }),
+    ghost: new THREE.MeshBasicMaterial({ color: 0x9fd4ff, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide }),
+    dead: new THREE.MeshStandardMaterial({ color: 0x4a4d55, metalness: 0.3, roughness: 0.8, side: THREE.DoubleSide })
+};
+function craftModel(kind, status) {                         // simple shapes, about 1 unit long; the size is set afterwards
+    var g = new THREE.Group(), only = (status === "ended" || status === "flyby") ? CM.ghost : status === "lost" ? CM.dead : null;
+    function add(geo, mat, x, y, z, rx, ry, rz) { var o = new THREE.Mesh(geo, only || mat); o.position.set(x || 0, y || 0, z || 0); o.rotation.x = rx || 0; o.rotation.y = ry || 0; o.rotation.z = rz || 0; g.add(o); return o; }
+    function box(w, h, d) { return new THREE.BoxGeometry(w, h, d); }
+    function cyl(r0, r1, h, n) { return new THREE.CylinderGeometry(r0, r1, h, n || 12); }
+    function pan(w, h) { return new THREE.PlaneGeometry(w, h); }
+    var H = Math.PI / 2;
+    if (kind === "hubble") { add(cyl(0.17, 0.17, 0.9), CM.silver, 0, 0, 0, 0, 0, H); add(cyl(0.2, 0.2, 0.12), CM.white, 0.5, 0, 0, 0, 0, H); add(pan(0.22, 0.7), CM.panel, -0.1, 0.5, 0); add(pan(0.22, 0.7), CM.panel, -0.1, -0.5, 0); }
+    else if (kind === "jwst") { add(cyl(0.42, 0.42, 0.04, 6), CM.foil, 0, 0.12, 0); add(pan(1.9, 0.95), CM.silver, 0, -0.1, 0, H, 0, 0); add(box(0.3, 0.2, 0.3), CM.white, 0, -0.25, 0); }
+    else if (kind === "juno") { add(cyl(0.22, 0.22, 0.35), CM.white); for (var k = 0; k < 3; k++) add(pan(1.0, 0.32), CM.panel, Math.cos(k * 2.0944) * 0.7, 0, Math.sin(k * 2.0944) * 0.7, 0, -k * 2.0944, 0); }
+    else if (kind === "tiangong") { add(cyl(0.14, 0.14, 0.9), CM.white, 0, 0, 0, 0, 0, H); add(cyl(0.14, 0.14, 0.7), CM.white, -0.2, 0, 0, H, 0, 0); add(pan(0.3, 1.1), CM.panel, 0.3, 0.6, 0); add(pan(0.3, 1.1), CM.panel, 0.3, -0.6, 0); }
+    else if (kind === "bepicolombo") { add(box(0.45, 0.45, 0.9), CM.foil); add(pan(1.7, 0.6), CM.panel, 0, 0.5, 0); add(cyl(0.2, 0.2, 0.08), CM.white, 0, 0, 0.5, H, 0, 0); }
+    else if (kind === "parker") { add(cyl(0.55, 0.55, 0.05, 24), CM.white, 0, 0, 0.4, H, 0, 0); add(box(0.3, 0.3, 0.4), CM.foil, 0, 0, 0); add(pan(0.5, 0.18), CM.panel, 0.4, 0, 0); add(pan(0.5, 0.18), CM.panel, -0.4, 0, 0); }
+    else { add(box(0.5, 0.35, 0.35), CM.foil); add(pan(0.9, 0.35), CM.panel, 0.7, 0, 0); add(pan(0.9, 0.35), CM.panel, -0.7, 0, 0); add(cyl(0.0, 0.2, 0.12), CM.white, 0, 0.24, 0); }
+    return g;
+}
+var moonCraft = new THREE.Group(); scene.add(moonCraft);
+var craftList = !SATS ? [] : window.CosmicPipeline.CRAFT.filter(function (c) { return SATS_ALL || ((c.status === "active" || c.status === "arriving") && c.host !== "moon" && !c.lagrange); }).map(function (c, i) {
+    var g = craftModel(c.kind, c.status); g.scale.set(c.size, c.size, c.size);
+    var parent = c.lagrange || c.host === "sun" ? scene : c.host === "moon" ? moonCraft : P[c.host].tilt;
+    parent.add(g); return { c: c, g: g, label: null, spin: 0.15 + (i % 5) * 0.05 };
+});
+var labelsOn = false, labelsBuilt = false, labelPos = new THREE.Vector3();
+function buildLabels() {
+    if (labelsBuilt || typeof THREE.Sprite !== "function") return; labelsBuilt = true;
+    craftList.forEach(function (it) {
+        try {
+            var cv = document.createElement("canvas"); cv.width = 320; cv.height = 40; var cx = cv.getContext("2d");
+            cx.fillStyle = "rgba(6,9,14,0.6)"; cx.fillRect(0, 0, 320, 40); cx.font = "bold 22px sans-serif";
+            cx.fillStyle = it.c.status === "active" ? "#9fe8ff" : it.c.status === "arriving" ? "#ffe08a" : "#aab4c2"; cx.fillText(it.c.name.replace(/ \(.*$/, ""), 10, 28);
+            var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false, depthWrite: false }));
+            sp.renderOrder = 10; sp.visible = false; scene.add(sp); it.label = sp;
+        } catch (e) { }
+    });
+}
+function toggleLabels() { labelsOn = !labelsOn; if (labelsOn) buildLabels(); craftList.forEach(function (it) { if (it.label && !labelsOn) it.label.visible = false; }); }
+function craftUpdate(ws, t, cpos, pxPerUnit) {
+    var E = window.CosmicPipeline, e = ws.pos.earth, mp = ws.pos.moon, i, it, c, p, hp, dx, dy, dz, d;
+    moonCraft.position.set(mp[0], mp[1], mp[2]);
+    for (i = 0; i < craftList.length; i++) {
+        it = craftList[i]; c = it.c;
+        if (c.lagrange) { p = E.lagrangeLocal(c, t, e); it.g.position.set(e[0] + p[0], e[1] + p[1], e[2] + p[2]); hp = e; }
+        else { p = E.craftLocal(c, t); it.g.position.set(p[0], p[1], p[2]); hp = c.host === "moon" ? mp : c.host === "sun" ? [0, 0, 0] : ws.pos[c.host]; }
+        it.g.rotation.y = t * it.spin + i;
+        dx = hp[0] - cpos.x; dy = hp[1] - cpos.y; dz = hp[2] - cpos.z; d = Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-6;
+        it.g.visible = c.size * 2 * pxPerUnit / d > 0.6;      // too small to see from here: not drawn
+        if (it.label) {
+            var show = labelsOn && it.g.visible && typeof it.g.getWorldPosition === "function";
+            it.label.visible = !!show;
+            if (show) { it.g.getWorldPosition(labelPos); var w = labelPos.distanceTo(cpos) * 300 / pxPerUnit; it.label.scale.set(w, w * 40 / 320, 1); it.label.position.set(labelPos.x, labelPos.y + w * 0.16 + c.size * 0.7, labelPos.z); }
+        }
+    }
+}
+
+/* ---------- a Falcon 9 launch every three minutes ---------- */
+// It plays on its own, wherever the camera is. The rocket stands on the ground, rises with the Earth, drops its booster (which lands on a ship at sea)
+// and the Dragon chases the ISS and docks with it. ?falcon=0 turns it off; typing  falcon  launches one right now.
+var FALCON = !/[?&]falcon=0/.test(location.search);
+var falconSiteObj = FALCON ? window.CosmicPipeline.falconSite() : null, falconRun = null, falconWant = false, falconPhaseNow = FALCON ? "idle" : "off";
+var FM = {
+    white: new THREE.MeshStandardMaterial({ color: 0xf1f3f6, metalness: 0.15, roughness: 0.55, emissive: 0x1a1c20 }),
+    black: new THREE.MeshStandardMaterial({ color: 0x1b1c1f, metalness: 0.3, roughness: 0.6 }),
+    grey: new THREE.MeshStandardMaterial({ color: 0x8a9099, metalness: 0.6, roughness: 0.45, emissive: 0x0c0d0f }),
+    ship: new THREE.MeshStandardMaterial({ color: 0x3a3f47, metalness: 0.4, roughness: 0.7, emissive: 0x0a0b0d }),
+    plume: new THREE.MeshBasicMaterial({ color: 0xffb25a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
+    plumeCore: new THREE.MeshBasicMaterial({ color: 0xfff2d0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
+};
+function fPart(g, geo, mat, x, y, z, rx, ry, rz) { var o = new THREE.Mesh(geo, mat); o.position.set(x || 0, y || 0, z || 0); o.rotation.x = rx || 0; o.rotation.y = ry || 0; o.rotation.z = rz || 0; g.add(o); return o; }
+function fPlume(g, baseY, len) {          // a glowing cone behind the engines; its length follows the throttle
+    var pg = new THREE.Group(); pg.position.set(0, baseY, 0);
+    fPart(pg, new THREE.CylinderGeometry(0.05, 0.0, len, 12), FM.plume, 0, -len / 2, 0); fPart(pg, new THREE.CylinderGeometry(0.025, 0.0, len * 0.6, 10), FM.plumeCore, 0, -len * 0.3, 0);
+    pg.visible = false; g.add(pg); return pg;
+}
+function fBooster() {                     // 0.42 long, standing on its four legs when landed
+    var g = new THREE.Group(); g.userData = { falcon: "booster" };
+    fPart(g, new THREE.CylinderGeometry(0.06, 0.06, 0.42, 14), FM.white, 0, 0, 0); fPart(g, new THREE.CylinderGeometry(0.06, 0.06, 0.04, 14), FM.black, 0, 0.19, 0);
+    fPart(g, new THREE.CylinderGeometry(0.045, 0.06, 0.03, 14), FM.grey, 0, -0.225, 0);
+    g.legs = []; for (var k = 0; k < 4; k++) { var a = k * Math.PI / 2 + Math.PI / 4, pv = new THREE.Group(); pv.position.set(Math.cos(a) * 0.06, -0.19, Math.sin(a) * 0.06); pv.rotation.y = -a; fPart(pv, new THREE.BoxGeometry(0.012, 0.2, 0.012), FM.black, 0.0, -0.1, 0.0); g.add(pv); g.legs.push(pv); }
+    g.plume = fPlume(g, -0.24, 0.6); return g;
+}
+function fStage2() { var g = new THREE.Group(); g.userData = { falcon: "stage2" }; fPart(g, new THREE.CylinderGeometry(0.06, 0.06, 0.2, 14), FM.white); fPart(g, new THREE.CylinderGeometry(0.03, 0.05, 0.05, 10), FM.grey, 0, -0.12, 0); g.plume = fPlume(g, -0.15, 0.32); return g; }
+function fDragon() {                      // the capsule's nose (the docking end) points along +y
+    var g = new THREE.Group(); g.userData = { falcon: "dragon" };
+    fPart(g, new THREE.CylinderGeometry(0.025, 0.06, 0.1, 16), FM.white, 0, 0.02, 0); fPart(g, new THREE.CylinderGeometry(0.02, 0.025, 0.03, 12), FM.grey, 0, 0.085, 0);
+    fPart(g, new THREE.CylinderGeometry(0.06, 0.06, 0.07, 16), FM.black, 0, -0.065, 0);
+    g.panels = []; for (var s = -1; s <= 1; s += 2) { var pv = new THREE.Group(); pv.position.set(s * 0.06, -0.065, 0); fPart(pv, new THREE.PlaneGeometry(0.22, 0.07), CM.panel, s * 0.11, 0, 0, Math.PI / 2, 0, 0); g.add(pv); g.panels.push(pv); }
+    return g;
+}
+var fRocket = new THREE.Group(), fBoost = fBooster(), fSec = fStage2(), fDrag = fDragon(), fShip = new THREE.Group(), fUp = new THREE.Vector3(0, 1, 0), fAxis = new THREE.Vector3();
+fShip.userData = { falcon: "ship" }; fPart(fShip, new THREE.BoxGeometry(0.7, 0.014, 0.3), FM.ship, 0, 0.007, 0); fPart(fShip, new THREE.BoxGeometry(0.08, 0.05, 0.08), FM.white, -0.26, 0.04, 0);
+[fBoost, fSec, fDrag, fShip].forEach(function (g) { g.visible = false; fRocket.add(g); }); scene.add(fRocket);
+function fAim(g, axis, local) {            // point a model's +y along an axis; a ship lies flat with its long side east
+    if (!g.quaternion || typeof g.quaternion.setFromUnitVectors !== "function") return;
+    fAxis.set(axis[0], axis[1], axis[2]).normalize(); g.quaternion.setFromUnitVectors(fUp, fAxis);
+}
+function falconUpdate(ws, t, near) {
+    if (!FALCON) return;
+    var CP = window.CosmicPipeline, T = CP.FALCON_T, spin = Math.abs(P.earth.spin), phi = P.earth.mesh.rotation.y, e = ws.pos.earth;
+    var cs = Math.floor(t / T.cycle) * T.cycle;
+    var running = falconRun && t <= falconRun.pick.t0 + T.gone + 1;      // the schedule always runs (it costs almost nothing); distance only decides whether it is drawn
+    if (falconWant && !running) { var cf = t - T.start + 2; falconRun = { cs: cf, forced: true, pick: CP.falconChoose(cf, phi - spin * (t - cf), falconSiteObj) }; falconWant = false; }
+    else if (!running && (!falconRun || falconRun.cs < cs)) falconRun = { cs: cs, forced: false, pick: CP.falconChoose(cs, phi - spin * (t - cs), falconSiteObj) };
+    var st = falconRun ? CP.falconState(t, falconRun.pick.t0, phi, falconSiteObj, falconRun.pick.plan) : null;
+    falconPhaseNow = st ? st.phase : "idle";
+    var parts = [[fBoost, st && st.booster], [fSec, st && st.stage2], [fDrag, st && st.dragon], [fShip, st && st.ship]], i, g, o, fl = 0.85 + 0.15 * Math.sin(t * 43) + 0.08 * Math.sin(t * 17.3);
+    for (i = 0; i < parts.length; i++) {
+        g = parts[i][0]; o = parts[i][1]; g.visible = near && !!o && o.scale > 0.001;
+        if (!o) continue;
+        g.position.set(e[0] + o.pos[0], e[1] + o.pos[1], e[2] + o.pos[2]); g.scale.set(o.scale, o.scale, o.scale);
+        if (g === fShip) { fAim(g, o.axis); } else fAim(g, o.axis);
+        if (g.plume) { g.plume.visible = o.plume > 0.02; g.plume.scale.set(1, Math.max(0.05, o.plume * fl), 1); }
+    }
+    if (st && st.booster) for (i = 0; i < fBoost.legs.length; i++) fBoost.legs[i].rotation.z = -0.15 - (1 - st.booster.legs) * 1.4;      // the legs fold against the body until just before landing
+    if (st && st.dragon) for (i = 0; i < fDrag.panels.length; i++) fDrag.panels[i].scale.set(Math.max(0.001, st.dragon.panels), 1, 1);
+}
+
 var probeScene = new THREE.Scene(), probeGeo = new THREE.PlaneGeometry(1, 1);
 function probe(mat) {
     var before = failedPrograms(), m = new THREE.Mesh(probeGeo, mat);
@@ -2332,13 +2809,11 @@ function allocTargets(h) {                                  // everything that d
     h.rt = floatRT(w, ht, true, MSAA);
     h.small = floatRT(64, 36, false, 0); h.avg = floatRT(1, 1, false, 0);
     h.bright = floatRT(Math.max(4, w >> 1), Math.max(4, ht >> 1), false, 0);
-    var sw = Math.max(4, w >> 2), sh = Math.max(4, ht >> 2);
-    h.streak = [floatRT(sw, sh, false, 0), floatRT(sw, sh, false, 0)];
     h.blurA = []; h.blurB = [];
     for (i = 0; i < 5; i++) { h.blurA.push(floatRT(Math.max(4, w >> (i + 1)), Math.max(4, ht >> (i + 1)), false, 0)); h.blurB.push(floatRT(Math.max(4, w >> (i + 1)), Math.max(4, ht >> (i + 1)), false, 0)); }
 }
 function freeTargets(h) {
-    [h.rt, h.small, h.avg, h.bright].concat(h.blurA, h.blurB, h.streak).forEach(function (t) { if (t) t.dispose(); });
+    [h.rt, h.small, h.avg, h.bright].concat(h.blurA, h.blurB).forEach(function (t) { if (t) t.dispose(); });
 }
 function buildHDR() {
     try {
@@ -2351,7 +2826,7 @@ function buildHDR() {
         h.mExp = postMat(SHADERS.expFrag, { uPrev: { value: null }, uAvg: { value: null }, uDt: { value: 0.016 }, uKey: { value: 0.14 }, uOffset: { value: 0.04 }, uMin: { value: 0.35 }, uMax: { value: 1.8 }, uSpeed: { value: 1.2 } });
         h.mBright = postMat(SHADERS.brightFrag, { uHdr: { value: null }, uExposure: { value: null }, uThreshold: { value: 0.9 }, uKnee: { value: 0.5 } });
         h.mBlur = postMat(SHADERS.blurFrag, { uTex: { value: null }, uDir: { value: new THREE.Vector2() } });
-        h.mComp = postMat(SHADERS.compositeFrag, { uHdr: { value: null }, uExposure: { value: null }, uB0: { value: null }, uB1: { value: null }, uB2: { value: null }, uB3: { value: null }, uB4: { value: null }, uStreak: { value: null }, uBloom: { value: 0.35 }, uStreakGain: { value: 0.5 }, uCA: { value: 0.0016 }, uGrain: { value: 0.018 }, uTime: sharedTime });
+        h.mComp = postMat(SHADERS.compositeFrag, { uHdr: { value: null }, uExposure: { value: null }, uB0: { value: null }, uB1: { value: null }, uB2: { value: null }, uB3: { value: null }, uB4: { value: null }, uBloom: { value: 0.35 }, uGrain: { value: 0.018 }, uTime: sharedTime });
         h.mFlare = postMat(SHADERS.flareFrag, { uHdr: { value: null }, uExposure: { value: null }, uSunUV: { value: new THREE.Vector2(0.5, 0.5) }, uAspect: { value: 1 }, uOn: { value: 0 } });
         h.mFlare.transparent = true; h.mFlare.blending = THREE.CustomBlending; h.mFlare.blendEquation = THREE.AddEquation; h.mFlare.blendSrc = THREE.OneFactor; h.mFlare.blendDst = THREE.OneFactor;
         var mats = [h.mFill, h.mLumDown, h.mLumAvg, h.mExp, h.mBright, h.mBlur, h.mComp];
@@ -2388,11 +2863,6 @@ function renderHDR(dt) {
         src = b2.texture;
     }
     var u = hdr.mComp.uniforms;
-    if (!lite) {                                            // the long blue anamorphic streak: the bright parts smeared sideways, three times
-        src = hdr.bright.texture;
-        for (i = 0; i < 3; i++) { t = hdr.streak[i & 1]; hdr.mBlur.uniforms.uTex.value = src; hdr.mBlur.uniforms.uDir.value.set(5 / t.width, 0); pass(hdr.mBlur, t); src = t.texture; }
-        u.uStreak.value = src; u.uStreakGain.value = 0.5;
-    } else { u.uStreak.value = blackTex; u.uStreakGain.value = 0; }
     u.uHdr.value = hdr.rt.texture; u.uExposure.value = ex;
     u.uB0.value = hdr.blurB[0].texture; u.uB1.value = hdr.blurB[1].texture; u.uB2.value = hdr.blurB[2].texture; u.uB3.value = hdr.blurB[3].texture; u.uB4.value = hdr.blurB[4].texture;
     pass(hdr.mComp, null);
@@ -2404,7 +2874,7 @@ function renderHDR(dt) {
 }
 
 /* ---------- resolution scale: starts at full, drops if the frame rate sags, creeps back up when there is headroom ---------- */
-var qScale = 1, qMin = 0.5, qMax = tier === "max" ? 1.5 : 1.25, lastDrop = -1e9, gFrames = 0, gAcc = 0, calm = 0;
+var qScale = 1, qMin = 0.8, qMax = tier === "max" ? 1.5 : 1.25, lastDrop = -1e9, gFrames = 0, gAcc = 0, calm = 0;
 function applyPR() {
     var dpr = Math.min(window.devicePixelRatio || 1, 2) * qScale, px = window.innerWidth * window.innerHeight * dpr * dpr;
     if (px > 8.3e6) dpr *= Math.sqrt(8.3e6 / px);          // never more than about 4K worth of pixels
@@ -2424,6 +2894,8 @@ var skyDirectOK = probe(skyMat), skyTexOK = probe(skyTexMat);
 if (!probe(coronaMat)) corona.visible = false;
 if (!probe(auroraMat)) aurora.visible = false;
 if (!probe(dustMat)) dust.visible = false;
+if (satPoints && !probe(satMat)) satPoints.visible = false;
+var satOn = !!satPoints && satPoints.visible;
 var auroraOn = aurora.visible, dustOn = dust.visible;      // what the extras are allowed to show: the frame loop then also hides whatever is out of range
 shells.forEach(function (m) { m.userData.on = m.visible; });
 hdr = buildHDR();
@@ -2478,7 +2950,7 @@ var TASKS = [
         var c = document.createElement("canvas"); c.width = 512; c.height = 256;
         var g = c.getContext("2d"), img = g.createImageData(512, 256), x, y, i;
         for (y = 0; y < 256; y++) for (x = 0; x < 512; x++) { i = (y * 512 + x) * 4; img.data[i] = 244; img.data[i + 1] = 247; img.data[i + 2] = 255; img.data[i + 3] = Math.round(cloudAlpha(((x + 0.5) / 512 - 0.5) * 2 * Math.PI, (0.5 - (y + 0.5) / 256) * Math.PI) * 255); }
-        g.putImageData(img, 0, 0); cloudU.uMap.value = new THREE.CanvasTexture(c); cloudsPainted = true;
+        g.putImageData(img, 0, 0); var cloudTex = new THREE.CanvasTexture(c); cloudTex.wrapS = THREE.RepeatWrapping; cloudU.uMap.value = cloudTex; cloudsPainted = true;
     } },
     { gpu: async function () { var rt = await bake(SRC.sun, RES.big, 0, {}, 1); setSunTexture(rt.texture); },
       cpu: function () { setSunTexture(cpuPaint(1024, 512, sunColor)); } },
@@ -2501,7 +2973,7 @@ function snapshot(u) { var sn = {}; UKEYS.forEach(function (k) { if (u[k]) sn[k]
 var assets = {}, assetList = [], paintingAsset = null, cloudsPainted = false, bootDone = false, bootSet = null, lastPaintEnd = 0;
 var KEEP_SECONDS = 20, CLOSE_RADII = 16;
 function makeAsset(id, o) {
-    var a = { id: id, always: !!o.always || REAL_ON, veil: !!o.veil, paint: o.paint, cpu: o.cpu, reset: o.reset || function () {}, level: 0, busy: false, rts: [], lowRts: [], need: false, needFor: 0, lastNeeded: 0, painted: 0, released: 0, noRelease: false };
+    var a = { id: id, always: !!o.always || REAL_ON, veil: id === TOUR[0].id, paint: o.paint, cpu: o.cpu, reset: o.reset || function () {}, level: 0, busy: false, rts: [], lowRts: [], need: false, needFor: 0, lastNeeded: 0, painted: 0, released: 0, noRelease: false };
     assets[id] = a; assetList.push(a); return a;
 }
 async function paintMoons(list) {
@@ -2518,7 +2990,7 @@ makeAsset("sky", { always: true, paint: TASKS[0].gpu, cpu: TASKS[0].cpu });
 makeAsset("sun", { always: true, paint: TASKS[2].gpu, cpu: TASKS[2].cpu });
 (function () {                                                     // Earth, its clouds and the Moon go together
     var snapE = snapshot(P.earth.u), snapC = snapshot(cloudU), snapM = snapshot(moonU);
-    makeAsset("earth", { veil: true,
+    makeAsset("earth", {
         paint: async function () { await TASKS[1].gpu(); try { await TASKS[3].gpu(); } catch (e) { TASKS[3].cpu(); } cloudsPainted = true; },
         cpu: function () { TASKS[1].cpu(); try { TASKS[3].cpu(); } catch (e) {} cloudsPainted = true; },
         reset: function () { snapE(); snapC(); snapM(); cloudsPainted = false; } });
@@ -2627,7 +3099,7 @@ function loadReal() {
         if (f.spec) loadTexture(f.spec, function (t) { var u = bodyU(id); u.uSpecMap.value = t; u.uUseSpecMap.value = 1; u.uSpecAmt.value = 0.9; });
         if (f.night) loadTexture(f.night, function (t) { var u = bodyU(id); u.uNightMap.value = t; u.uUseNightMap.value = 1; u.uNight.value = 1; });
         if (f.clouds) loadTexture(f.clouds, function (t) {
-            cloudU.uMap.value = t; cloudU.uAlphaLum.value = 1; cloudsPainted = true;
+            t.wrapS = THREE.RepeatWrapping; cloudU.uMap.value = t; cloudU.uAlphaLum.value = 1; cloudsPainted = true;
             var u = P.earth.u; u.uCloudMap.value = t; u.uCloudLum.value = 1; u.uCloudShadow.value = 1;
         });
         if (f.ring) loadTexture(f.ring, function (t) { ringMat.uniforms.uRingTex.value = t; P.saturn.u.uRingTex.value = t; });
@@ -2677,9 +3149,10 @@ window.addEventListener("wheel", function (e) {
 }, { passive: true });
 window.addEventListener("touchmove", function () { takeOver(); }, { passive: true });
 var typed = "";
+function typeKey(k) { typed = (typed + String(k).toLowerCase()).slice(-6); if (typed === "apollo") visitFlag(); if (typed === "labels") toggleLabels(); if (typed === "falcon") falconWant = true; }      // the easter egg
 window.addEventListener("keydown", function (e) {
     if (["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "].indexOf(e.key) > -1) takeOver();
-    if (e.key && e.key.length === 1) { typed = (typed + e.key.toLowerCase()).slice(-6); if (typed === "apollo") visitFlag(); }     // the easter egg
+    if (e.key && e.key.length === 1) typeKey(e.key);
 });
 window.addEventListener("scroll", function () {
     var y = window.scrollY || 0;
@@ -2693,15 +3166,23 @@ window.addEventListener("scroll", function () {
 // (AUTO_SPEED); scrolling down gives it a push forward, scrolling up pushes it backwards, and it settles back to the drift when you stop.
 // Only the background moves: the words on the page are never scrolled for you.
 var AUTO_SPEED = 1.25;      // the drift: 1 is the original slow pace, 2 would be twice as fast
-var SCROLL_GAIN = 0.6;      // how far one page of scrolling pushes the tour, in loops (0.6 = most of the way round)
+var SCREEN_GAIN = 0.012;    // how far one screenful of scrolling pushes the tour, in loops (so a short page and a long page feel the same)
+var SCROLL_GAIN = 0.06;     // how far one page of scrolling pushes the tour, in loops: a gentle boost, a few times the drift while you scroll (0.6 was ten times stronger)
 var SCROLL_SETTLE = 3;      // how quickly a push is spent (per second): lower is a longer, softer glide
-var MAX_PUSH = 0.2;         // the most one burst of scrolling can queue up, in loops, so a flick of the wheel never whips the camera
-var pendingKick = 0, lastParentP = null, lastParentMsg = -1e9, parentDriven = false;
+var MAX_PUSH = 0.02;        // the most one burst of scrolling can queue up, in loops (about 5 seconds of tour), so a flick of the wheel never whips the camera
+var pendingKick = 0, lastParentY = null, lastParentP = null, lastParentMsg = -1e9, parentDriven = false;
 window.addEventListener("message", function (e) {
     var d = e && e.data;
     if (!e || e.source !== window.parent || !d) return;
-    if (typeof d.scrollPush === "number" && isFinite(d.scrollPush)) {       // a page that is too short to scroll can still push the scene: the amount is a fraction of a page
-        pendingKick = clamp(pendingKick + d.scrollPush * SCROLL_GAIN, -MAX_PUSH, MAX_PUSH); parentDriven = true; lastParentMsg = clock; return;
+    // the frame sits behind the page and never has the keyboard, so the page passes on what is typed (for the Apollo flag) and ?flag=1
+    if (typeof d.key === "string" && d.key.length === 1) { typeKey(d.key); return; }
+    if (d.flag === true) { visitFlag(); return; }
+    if (typeof d.scrollPush === "number" && isFinite(d.scrollPush)) {       // a page that cannot scroll (or is at its top or bottom) can still push the scene: the amount is a fraction of a screen
+        pendingKick = clamp(pendingKick + d.scrollPush * SCREEN_GAIN, -MAX_PUSH, MAX_PUSH); parentDriven = true; lastParentMsg = clock; return;
+    }
+    if (typeof d.scrollY === "number" && isFinite(d.scrollY)) {              // how many pixels the page has moved: unaffected by the page growing as its content loads
+        if (lastParentY !== null && Math.abs(d.scrollY - lastParentY) > 0.5) pendingKick = clamp(pendingKick + (d.scrollY - lastParentY) / Math.max(window.innerHeight, 200) * SCREEN_GAIN, -MAX_PUSH, MAX_PUSH);
+        lastParentY = d.scrollY; parentDriven = true; lastParentMsg = clock; return;
     }
     if (typeof d.scrollProgress !== "number" || !isFinite(d.scrollProgress)) return;
     var p = clamp(d.scrollProgress, 0, 1);
@@ -2710,14 +3191,14 @@ window.addEventListener("message", function (e) {
 });
 window.addEventListener("resize", function () { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); updateMaxScroll(); applyPR(); });
 // A small handle for when this becomes your portfolio background
-window.Cosmic = { get resident() { return assetList.filter(function (a) { return a.level === 2; }).map(function (a) { return a.id; }); }, get previews() { return assetList.filter(function (a) { return a.level >= 1; }).map(function (a) { return a.id; }); }, get painting() { return paintingAsset ? paintingAsset.id : null; }, setAuto: function (on) { if (on && !auto) { auto = true; } else if (!on) { takeOver(); } }, get tier() { return tier; }, get following() { return Math.abs(pendingKick) > 0.002; }, get hdr() { return !!hdr; }, get lite() { return lite; }, visitFlag: visitFlag, moons: MOONS.length + 1, get phase() { return ((targetPhase % 1) + 1) % 1; } };
+window.Cosmic = { get falcon() { return falconPhaseNow; }, get time() { return clock; }, launchNow() { falconWant = true; }, get satellites() { return satPoints ? satFleet.count : 0; }, get satellitesInOrbit() { return window.CosmicPipeline.SAT_TOTAL; }, get craft() { return craftList.map(function (it) { return { id: it.c.id, name: it.c.name, status: it.c.status, host: it.c.host }; }); }, get resident() { return assetList.filter(function (a) { return a.level === 2; }).map(function (a) { return a.id; }); }, get previews() { return assetList.filter(function (a) { return a.level >= 1; }).map(function (a) { return a.id; }); }, get painting() { return paintingAsset ? paintingAsset.id : null; }, setAuto: function (on) { if (on && !auto) { auto = true; } else if (!on) { takeOver(); } }, get tier() { return tier; }, get following() { return Math.abs(pendingKick) > 0.002; }, get hdr() { return !!hdr; }, get lite() { return lite; }, visitFlag: visitFlag, moons: MOONS.length + 1, get phase() { return ((targetPhase % 1) + 1) % 1; } };
 
 var planetIds = Object.keys(P), pdist = {};
 var clock = 0, last = performance.now(), prevCam = new THREE.Vector3(), motion = new THREE.Vector3(), velocity = 0, slowChecks = 0;
 var bX = new THREE.Vector3(), bY = new THREE.Vector3(), bZ = new THREE.Vector3(), bM = new THREE.Matrix4(), sunV3 = new THREE.Vector3();
 function frame(now) {
     requestAnimationFrame(frame);
-    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    var raw = (now - last) / 1000, dt = Math.min(0.05, raw), rdt = Math.min(0.5, raw); last = now;      // dt steps the physics; rdt is real elapsed time, so the drift keeps its pace even on a slow machine
     if (document.hidden) return;                            // nothing to draw while the tab is hidden
     clock += dt; sharedTime.value = clock;
     for (var bs0 = 0; bs0 < stripsPerFrame; bs0++) bakeStep();
@@ -2731,7 +3212,7 @@ function frame(now) {
         }
     }
     if (auto) {
-        if (!flag.active) { var kick = pendingKick * (1 - Math.exp(-dt * SCROLL_SETTLE)); pendingKick -= kick; targetPhase += dt * AUTO_SPEED / TOUR_TOTAL + kick; smoothPhase = targetPhase; if (clock - lastScrollWrite > 0.1) { lastScrollWrite = clock; setScroll(((targetPhase % 1) + 1) % 1); } }    // the scroll bar follows ten times a second
+        if (!flag.active) { var kick = pendingKick * (1 - Math.exp(-rdt * SCROLL_SETTLE)); pendingKick -= kick; targetPhase += rdt * AUTO_SPEED / TOUR_TOTAL + kick; smoothPhase = targetPhase; if (clock - lastScrollWrite > 0.1) { lastScrollWrite = clock; setScroll(((targetPhase % 1) + 1) % 1); } }    // the scroll bar follows ten times a second
     } else {
         pendingKick = 0;
         smoothPhase += (targetPhase - smoothPhase) * (1 - Math.exp(-dt * 4.5));
@@ -2742,7 +3223,7 @@ function frame(now) {
         var p = ws.pos[b.id], pl = P[b.id];
         pl.group.position.set(p[0], p[1], p[2]); pl.mesh.rotation.y += dt * pl.spin;
     });
-    clouds.rotation.y += dt * 0.012;
+    clouds.rotation.y = P.earth.mesh.rotation.y;      // the clouds turn with the planet (they only drift a very little on their own, in the shader)
     moon.position.set(ws.pos.moon[0], ws.pos.moon[1], ws.pos.moon[2]); moon.rotation.y = -ws.moonAngle;
     sun.rotation.y += dt * 0.02;
 
@@ -2750,6 +3231,9 @@ function frame(now) {
     issGroup.position.set(f.pos[0], f.pos[1], f.pos[2]);
     bZ.set(f.tangent[0], f.tangent[1], f.tangent[2]); bY.set(f.radial[0], f.radial[1], f.radial[2]); bX.crossVectors(bY, bZ).normalize();
     bM.makeBasis(bX, bY, bZ); issGroup.quaternion.setFromRotationMatrix(bM);
+    { var isl = Math.sqrt(f.pos[0] * f.pos[0] + f.pos[1] * f.pos[1] + f.pos[2] * f.pos[2]) || 1, isx = -f.pos[0] / isl, isy = -f.pos[1] / isl, isz = -f.pos[2] / isl;      // the Sun, seen from the station
+      var isA = Math.atan2(-(isx * bY.x + isy * bY.y + isz * bY.z), isx * bZ.x + isy * bZ.y + isz * bZ.z);                                                              // the angle that turns the arrays' faces to it
+      for (var ipk in issPivots) issPivots[ipk].rotation.x = isA; }
 
     var path = tourCamera(smoothPhase, ws), sway = reduceMotion ? 0 : 1, cp = path.pos, cl = path.look, roll = reduceMotion ? 0 : path.roll;
     if (flag.active) {                                      // the flag detour: blend the tour camera into a close-up of the flag and back
@@ -2780,7 +3264,10 @@ function frame(now) {
     for (pi = 0; pi < shells.length; pi++) { pid = shells[pi].userData.pid; shells[pi].visible = shells[pi].userData.on && pdist[pid] < P[pid].r * 50; }
     aurora.visible = auroraOn && pdist.earth < P.earth.r * 24;
     clouds.visible = cloudsPainted && !safeMode && pdist.earth < P.earth.r * 60;
-    dust.visible = dustOn && velocity > 0.02;                   // the dust shader draws nothing at or below this speed, so skipping it changes nothing you can see
+    dust.visible = dustOn && velocity > 0.02;
+    if (satPoints) { satU.uEarth.value.set(ws.pos.earth[0], ws.pos.earth[1], ws.pos.earth[2]); satU.uPxScale.value = pxPerUnit * (typeof renderer.getPixelRatio === "function" ? renderer.getPixelRatio() : 1); satPoints.visible = satOn && !lite && pdist.earth < 200; }
+    craftUpdate(ws, clock, cpos, pxPerUnit);
+    falconUpdate(ws, clock, pdist.earth < 200);                   // the dust shader draws nothing at or below this speed, so skipping it changes nothing you can see
     pdx = ws.pos.moon[0] - cpos.x; pdy = ws.pos.moon[1] - cpos.y; pdz = ws.pos.moon[2] - cpos.z;
     flagGroup.visible = flag.wait || flag.active || Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz) < 14;
     moonU.uRpx.value = MOON_R * pxPerUnit / (Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz) + 1e-6);
