@@ -12,7 +12,8 @@
 <style>
   :root {
     --bg: #05080d;
-    --panel: rgba(5, 8, 13, 0.82);
+    --panel: rgba(5, 8, 13, 0.88);
+    --scene-zoom: 1.25;
     --raised: rgba(124, 199, 255, 0.06);
     --text: #dbe4ee;
     --bright: #f4f8fb;
@@ -32,7 +33,9 @@
   }
 
   /* The space scene sits behind everything. Its file is background.html. */
-  #space-hull { position: fixed; inset: 0; width: 100vw; height: 100vh; border: 0; z-index: -1; pointer-events: none; }
+  /* The scene is drawn at 1 divided by --scene-zoom of the screen's size and stretched to fit, which cuts the pixels the graphics card has to draw.
+     1.25 draws 64% of the pixels. Use 1 for full sharpness, or 1.5 if it still lags. */
+  #space-hull { position: fixed; top: 0; left: 0; width: calc(100vw / var(--scene-zoom)); height: calc(100vh / var(--scene-zoom)); transform: scale(var(--scene-zoom)); transform-origin: 0 0; border: 0; z-index: -1; pointer-events: none; }
 
   /* One column on the left, so the scene stays visible on the right of wide screens. */
   main {
@@ -40,8 +43,6 @@
     margin: 0 0 0 clamp(1rem, 8vw, 7rem);
     padding: clamp(2.5rem, 9vh, 5.5rem) clamp(1.25rem, 4vw, 2.75rem) 5rem;
     background: var(--panel);
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
     min-height: 100vh;
     border-right: 1px solid var(--rule);
   }
@@ -201,8 +202,10 @@
   </section>
 </main>
 
-<!-- The space background. It lives in background.html, in the same folder as this file. -->
-<iframe src="background.html" id="space-hull" title="Animated space background" aria-hidden="true" tabindex="-1"></iframe>
+<!-- The space background. It lives in background.html, in the same folder as this file.
+     The settings after the question mark make it lighter to draw: q=medium uses smaller textures and no edge smoothing, and detail=0 turns off fine surface noise.
+     Add &amp;sats=0&amp;falcon=0 to remove the satellites and the rocket launches too. Use q=high for a sharper scene. -->
+<iframe src="background.html?q=medium&amp;detail=0" id="space-hull" title="Animated space background" aria-hidden="true" tabindex="-1"></iframe>
 <script src="scroll-sync.js"></script>
 <script src="security-check.js"></script>
 </body>
