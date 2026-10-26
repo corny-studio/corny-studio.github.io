@@ -153,7 +153,7 @@
     <div class="project">
       <h3>A static site with a verifiable security posture</h3>
       <p>This portfolio is built so there is little to attack. It is static, so there is no server-side code, login or database to compromise. A Content Security Policy allows only this site's own scripts, HSTS keeps every connection on HTTPS, and further headers block content-type sniffing, embedding in other sites, referrer leakage and unneeded browser features.</p>
-      <p>The page checks its own response headers in your browser, reports a pass or fail for each, and links to three independent scanners, so the result doesn't rest on my word. Known limits are stated openly: the animated background runs one inline script, so its policy is looser, and the styles are still inline. Tightening both is planned.</p>
+      <p>The page checks its own response headers in your browser, reports a pass or fail for each, and links to three independent scanners, so the result doesn't rest on my word. Known limits are stated openly: the styles are still inline, and the background loads one third-party library, three.js, which is locked with an integrity hash. Moving the styles into their own file is planned.</p>
       <a class="btn" href="https://github.com/corny-studio/corny-studio.github.io" rel="noopener noreferrer">View the source on GitHub</a>
     </div>
   </section>

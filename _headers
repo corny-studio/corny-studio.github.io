@@ -1,0 +1,27 @@
+# Cloudflare Pages reads this file and adds these security headers to every response.
+# Use this file if you host the site on Cloudflare Pages. Do not use it together with
+# security-headers-worker.js: pick one.
+#
+# Each Content-Security-Policy is set on exactly one path pattern. Cloudflare joins
+# repeated headers with a comma, so two rules matching the same page would stack two policies.
+# Cloudflare Pages serves background.html at /background, so both spellings are listed.
+# The background page runs its script from background.js, so its policy is strict too: its own files plus cdnjs (for three.js, with an integrity hash).
+
+/*
+  Strict-Transport-Security: max-age=15552000
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+
+/
+  Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self'; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+
+/index.html
+  Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self'; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+
+/background
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'
+
+/background.html
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'
