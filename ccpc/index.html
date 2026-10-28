@@ -86,6 +86,7 @@
     
     <div class="grid">
         <div class="form-group"><label>First Name</label><input type="text" id="firstName" placeholder="Target First Name"></div>
+        <!-- Successfully added middle name vector block -->
         <div class="form-group"><label>Middle Name</label><input type="text" id="middleName" placeholder="Target Middle Name"></div>
         <div class="form-group"><label>Last Name</label><input type="text" id="lastName" placeholder="Target Last Name"></div>
         <div class="form-group"><label>Nickname</label><input type="text" id="nickname" placeholder="Target Nickname"></div>
@@ -102,8 +103,8 @@
     </div>
 
     <div class="btn-container">
-        <button id="generateBtn">Generate Prioritized Wordlist</button>
-        <button class="copy-btn" id="copyBtn">📋 Copy</button>
+        <button onclick="generateWordlist()">Generate Prioritized Wordlist</button>
+        <button class="copy-btn" onclick="copyToClipboard()">📋 Copy</button>
     </div>
 
     <div class="output-box">
@@ -116,42 +117,10 @@
     </div>
 </div>
 
-<script nonce="CCPC_BYPASS_TOKEN">
+<script>
 const COMMON_NUMBERS = ["123", "1", "1234", "12", "12345", "777", "2026"];
 const COMMON_SPECIALS = ["!", "@", "#", "$", "*", "?"];
 const LEET_MAP = { 'a': '4', 'e': '3', 'i': '1', 'o': '0', 's': '5', 't': '7' };
-
-const CRITICAL_COMMON_BASES = [
-    "password", "123456", "123456789", "qwerty", "iloveyou", 
-    "princess", "admin", "welcome", "letmein", "charlie"
-];
-
-function scorePasswordProbability(pwd, originalCleanBases, years) {
-    let score = 0;
-    let pwdLower = pwd.toLowerCase();
-
-    CRITICAL_COMMON_BASES.forEach(common => {
-        if (pwdLower === common || pwdLower.startsWith(common)) score += 500;
-    });
-
-    if (/^[A-Z][a-z0-9]+$/.test(pwd) || /^[A-Z][a-z0-9]+[^A-Za-z0-9]+$/.test(pwd)) score += 45;
-    else if (/^[a-z0-9]+$/.test(pwd)) score += 25;
-    else if (/^[A-Z0-9]+$/.test(pwd)) score += 10;
-
-    years.forEach(year => {
-        if (pwd.includes(year)) score += year.length === 4 ? 35 : 25;
-    });
-
-    COMMON_NUMBERS.forEach(num => {
-        if (pwd.endsWith(num) || pwd.includes(num + "!")) score += 20;
-    });
-
-    if (pwd.endsWith("!") || pwd.endsWith("!@#")) score += 30;
-    if (pwd.endsWith("@")) score += 15;
-    if (pwd.length > 16) score -= (pwd.length - 16) * 4;
-
-    return score;
-}
 
 function mutateCase(word) {
     if (!word) return [];
@@ -192,9 +161,9 @@ function applyLeet(word, aggressive) {
 }
 
 function generateWordlist() {
+    // Linked the middleName ID directly into our search logic fields array parameter
     const fields = ['firstName', 'middleName', 'lastName', 'nickname', 'partnerName', 'petName', 'birthYear', 'sportsTeam', 'hobby'];
     let baseWords = [];
-    let originalCleanBases = [];
     let years = [];
 
     fields.forEach(id => {
@@ -205,7 +174,6 @@ function generateWordlist() {
                 years.push(val.substring(2));
             } else if (val.length >= 2) {
                 baseWords.push(val);
-                originalCleanBases.push(val.toLowerCase());
             }
         }
     });
@@ -215,33 +183,28 @@ function generateWordlist() {
     baseWords.forEach(word => {
         applyLeet(word, aggressive).forEach(b => mutatedBases.add(b));
     });
-
-    CRITICAL_COMMON_BASES.forEach(b => {
-        applyLeet(b, aggressive).forEach(b => mutatedBases.add(b));
-    });
     
     let mutatedBasesArr = Array.from(mutatedBases);
     let targetNumbers = [...new Set([...years, ...COMMON_NUMBERS])];
     let seen = new Set();
-    let rawResults = [];
+    let results = [];
 
     function addPass(pwd) {
         if (pwd.length >= 6 && pwd.length <= 32 && !seen.has(pwd)) {
             seen.add(pwd);
-            let weight = scorePasswordProbability(pwd, originalCleanBases, years);
-            rawResults.push({ password: pwd, weight: weight });
+            results.push(pwd);
         }
     }
 
     mutatedBasesArr.forEach(base => {
         addPass(base);
-        targetNumbers.forEach(n => addPass(`${base}${n}`));
-        COMMON_SPECIALS.forEach(s => addPass(`${base}${s}`));
+        targetNumbers.forEach(n => addPass(base + n));
+        COMMON_SPECIALS.forEach(s => addPass(base + s));
         targetNumbers.forEach(n => {
             COMMON_SPECIALS.forEach(s => {
-                addPass(`${base}${n}${s}`);
-                addPass(`${base}${s}${n}`);
-                addPass(`${s}${base}${n}`);
+                addPass(base + n + s);
+                addPass(base + s + n);
+                addPass(s + base + n);
             });
         });
     });
@@ -249,3 +212,30 @@ function generateWordlist() {
     for (let i = 0; i < mutatedBasesArr.length; i++) {
         for (let j = 0; j < mutatedBasesArr.length; j++) {
             if (i !== j && (mutatedBasesArr[i].length + mutatedBasesArr[j].length <= 16)) {
+                let combo = mutatedBasesArr[i] + mutatedBasesArr[j];
+                addPass(combo);
+                targetNumbers.forEach(n => addPass(combo + n));
+                COMMON_SPECIALS.forEach(s => addPass(combo + s));
+            }
+        }
+    }
+
+    document.getElementById('output').value = results.join('\n');
+    document.getElementById('stats').innerText = `Count: ${results.length} unique entries`;
+    document.getElementById('copyStatus').innerText = "⚡ Layer 1 optimized.";
+}
+
+function copyToClipboard() {
+    const textarea = document.getElementById('output');
+    if (!textarea.value || textarea.value.startsWith("Awaiting")) return;
+    
+    textarea.select();
+    document.execCommand('copy');
+    
+    const status = document.getElementById('copyStatus');
+    status.innerText = "✓ Copied to clipboard!";
+    setTimeout(() => { status.innerText = ""; }, 3000);
+}
+</script>
+</body>
+</html>
