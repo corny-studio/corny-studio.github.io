@@ -3,229 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ccpc@corny-studio: ~</title>
+    <title>ccpc@corny-studio: ~ Matrix Terminal HUD</title>
     <style>
-        body {
-            background-color: #050505;
-            color: #39ff14;
-            font-family: 'Courier New', Courier, monospace;
-            padding: 20px;
-            margin: 0;
-            font-size: 14px;
-            line-height: 1.4;
+        :root {
+            --bg-color: #030508;
+            --card-bg: #070b12;
+            --accent-color: #00ff66;
+            --accent-hover: #00cc52;
+            --text-color: #a3b3c6;
+            --border-color: #16222f;
+            --terminal-green: #39ff14;
         }
-        #terminal {
-            max-width: 950px;
-            margin: 0 auto;
-            background-color: #000000;
-            border: 1px solid #1f2937;
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
             padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .hud-container {
+            width: 100%;
+            max-width: 1200px;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 35px rgba(0, 255, 102, 0.08);
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .hud-container { grid-template-columns: 1fr; }
+        }
+        .panel {
+            background-color: #020406;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
-            box-shadow: 0 0 25px rgba(57, 255, 20, 0.15);
-            min-height: 500px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
         }
-        .header {
-            color: #888;
-            margin-bottom: 15px;
-            border-bottom: 1px dashed #222;
-            padding-bottom: 10px;
+        h2 {
+            margin-top: 0;
+            font-size: 16px;
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(0, 255, 102, 0.3);
         }
-        .output-line {
-            margin-bottom: 6px;
-            white-space: pre-wrap;
-            word-break: break-all;
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+        .form-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 4px; font-weight: bold; font-size: 11px; color: #fff; text-transform: uppercase; }
+        input[type="text"] {
+            background-color: #05080c;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--terminal-green);
+            padding: 8px;
+            font-size: 13px;
+            font-family: inherit;
         }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 5px rgba(0, 255, 102, 0.4);
+        }
+        .toggle-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; font-size: 12px; color: #fff; }
+        .btn-matrix {
+            background-color: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            padding: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            margin-top: auto;
+        }
+        .btn-matrix:hover {
+            background-color: var(--accent-color);
+            color: #000;
+            box-shadow: 0 0 12px rgba(0, 255, 102, 0.3);
+        }
+        .terminal-screen {
+            background-color: #000;
+            border: 1px solid #1f2937;
+            border-radius: 4px;
+            padding: 15px;
+            flex-grow: 1;
+            overflow-y: auto;
+            max-height: 480px;
+            min-height: 350px;
+        }
+        .output-line { margin-bottom: 5px; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
         .system { color: #58a6ff; }
         .error { color: #ff3333; }
         .success { color: #00ff66; }
         .critical { color: #ff3333; font-weight: bold; background-color: rgba(255, 51, 51, 0.15); padding: 0 4px; }
-        .keyword { color: #ffff00; }
-        .input-row {
-            display: flex;
-            align-items: center;
-            margin-top: 10px;
-        }
-        .prompt {
-            color: #00ff66;
-            font-weight: bold;
-            margin-right: 10px;
-            white-space: nowrap;
-        }
-        #cmdInput {
-            background: transparent;
-            border: none;
-            color: #39ff14;
-            font-family: inherit;
-            font-size: inherit;
-            width: 100%;
-            outline: none;
-        }
-        #history-box {
-            flex-grow: 1;
-            overflow-y: auto;
-        }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+        .terminal-header { color: #666; font-size: 11px; margin-bottom: 10px; border-bottom: 1px dashed #222; padding-bottom: 8px; }
     </style>
 </head>
 <body>
 
-<div id="terminal">
-    <div class="header">
-================================================================================
-CCPC Core v3.0 - ADVANCED PREDICTIVE PASSWORD EXPOSURE SIMULATOR
-TRACKING TARGET DATA PROFILE PERMUTATIONS & GLOBAL LEAK DATABASES
-AUTHENTICATED OPERATOR: corny-studio
-================================================================================
-Type 'help' to display a complete table of execution flags and parameters.
+<div class="hud-container">
+    <!-- LEFT PANEL: INPUT HUD VECTOR CONTROL -->
+    <div class="panel">
+        <h2>Parameters HUD</h2>
+        <div class="grid">
+            <div class="form-group"><label>First Name</label><input type="text" id="firstName" placeholder="Target First Name"></div>
+            <div class="form-group"><label>Middle Name</label><input type="text" id="middleName" placeholder="Target Middle Name"></div>
+            <div class="form-group"><label>Last Name</label><input type="text" id="lastName" placeholder="Target Last Name"></div>
+            <div class="form-group"><label>Nickname</label><input type="text" id="nickname" placeholder="Target Nickname"></div>
+            <div class="form-group"><label>Partner</label><input type="text" id="partnerName" placeholder="Partner/Spouse"></div>
+            <div class="form-group"><label>Pet Name</label><input type="text" id="petName" placeholder="Pet Name"></div>
+            <div class="form-group"><label>Birth Year</label><input type="text" id="birthYear" placeholder="YYYY"></div>
+            <div class="form-group"><label>Sports Team</label><input type="text" id="sportsTeam" placeholder="Team Name"></div>
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;"><label>Hobby / Keyword</label><input type="text" id="hobby" placeholder="Key Hobbies/Keywords"></div>
+        
+        <div class="toggle-group">
+            <input type="checkbox" id="aggressiveLeet">
+            <label for="aggressiveLeet">Combinatorial Leetspeak Branching</label>
+        </div>
+        
+        <button class="btn-matrix" onclick="executeHUDPipeline()">Run Exposure Simulator</button>
     </div>
-    
-    <div id="history-box">
-        <div class="output-line system">[*] Initializing core mutation matrix layer... Ready.</div>
-        <div class="output-line system">[*] Empirical breach data matrices loaded (RockYou integration active).</div>
-        <div class="output-line">Type 'status' to review target parameter matrix configuration.</div>
-    </div>
-    
-    <div class="input-row">
-        <span class="prompt">ccpc@corny-studio:~#</span>
-        <input type="text" id="cmdInput" autofocus autocomplete="off" spellcheck="false">
+
+    <!-- RIGHT PANEL: SCR0LLING TERMINAL LOG STREAM -->
+    <div class="panel">
+        <h2>See how hackers crack your password!</h2>
+        <div class="terminal-screen" id="terminalScreen">
+            <div class="terminal-header">
+CCPC Core v3.0 // OPERATOR: corny-studio // SYSTEM STATUS: ACTIVE
+--------------------------------------------------------------------------------
+            </div>
+            <div class="output-line system">[*] Monitoring core mutation matrix layer... Ready.</div>
+            <div class="output-line system">[*] Empirical breach data matrices loaded (RockYou filters online).</div>
+            <div class="output-line">[System Idle] Configure vector inputs on the left and trigger compilation.</div>
+        </div>
     </div>
 </div>
 
 <script>
-// Target Parameter Vector Matrix Storage
-let profile = {
-    first_name: "",
-    middle_name: "",
-    last_name: "",
-    nickname: "",
-    partner: "",
-    pet: "",
-    birth_year: "",
-    team: "",
-    keyword: ""
-};
-
-let config = {
-    aggressive_leet: false
-};
-
 const COMMON_NUMBERS = ["123", "1", "1234", "12", "12345", "777", "2026"];
 const COMMON_SPECIALS = ["!", "@", "#", "$", "*", "?"];
 const LEET_MAP = { 'a': '4', 'e': '3', 'i': '1', 'o': '0', 's': '5', 't': '7' };
 
-// Empirically the absolute most common password bases globally (RockYou high-risk flags)
 const CRITICAL_COMMON_BASES = [
     "password", "123456", "123456789", "qwerty", "iloveyou", 
     "princess", "admin", "welcome", "letmein", "charlie"
 ];
 
-const historyBox = document.getElementById('history-box');
-const cmdInput = document.getElementById('cmdInput');
-
-// Focus lock to keep user locked inside terminal layout framework
-document.addEventListener('click', () => cmdInput.focus());
-
-cmdInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        let rawInput = this.value;
-        if (!rawInput.trim()) return;
-        
-        logLine(`ccpc@corny-studio:~# ${rawInput}`, "");
-        parseCommand(rawInput.trim());
-        this.value = '';
-        window.scrollTo(0, document.body.scrollHeight);
-        historyBox.scrollTop = historyBox.scrollHeight;
-    }
-});
-
-function logLine(text, className) {
+function logTerminal(text, className) {
+    const screen = document.getElementById('terminalScreen');
     let div = document.createElement('div');
     div.className = `output-line ${className}`;
-    div.innerHTML = text; // Allowed for terminal color wrapping injection
-    historyBox.appendChild(div);
-}
-
-function parseCommand(inputStr) {
-    let parts = inputStr.split(/\s+/);
-    let primaryCmd = parts[0].toLowerCase();
-    
-    switch(primaryCmd) {
-        case 'help':
-            logLine(`\nAvailable CCPC Operational Directives:\n` +
-                    `  help                           Display command usage matrix tables\n` +
-                    `  status                         Inspect active dictionary profiling metrics\n` +
-                    `  set [parameter] [value]        Assign values to discovery vector keys\n` +
-                    `  toggle leet                    Enable/Disable combinatorial leetspeak branching\n` +
-                    `  run                            Execute predictive array ranking generation\n` +
-                    `  clear                          Purge terminal display buffer memory\n`, "system");
-            break;
-            
-        case 'status':
-            logLine(`\n--- ACTIVE METRIC MATRIX CONFIGURATION ---`, "system");
-            for (let [key, val] of Object.entries(profile)) {
-                logLine(`  ${key.padEnd(15)} : ${val ? val : '[NOT DEFINED]'}`, val ? "success" : "keyword");
-            }
-            logLine(`  aggressive_leet : ${config.aggressive_leet ? "ENABLED (COMBINATORIAL)" : "DISABLED (LIGHT)"}\n`, "system");
-            break;
-            
-        case 'set':
-            if (parts.length < 3) {
-                logLine("[-] Execution Error: Syntax mapping requirements incomplete. Format: set [parameter] [value]", "error");
-                break;
-            }
-            let param = parts[1].toLowerCase();
-            let value = parts.slice(2).join(" ");
-            
-            if (profile.hasOwnProperty(param)) {
-                profile[param] = value;
-                logLine(`[+] Parameter map optimized: ${param} -> "${value}"`, "success");
-            } else {
-                logLine(`[-] Map Failure: Vector handle "${param}" unrecognized inside storage directory. Type 'status' to review keys.`, "error");
-            }
-            break;
-            
-        case 'toggle':
-            if (parts[1] && parts[1].toLowerCase() === 'leet') {
-                config.aggressive_leet = !config.aggressive_leet;
-                logLine(`[+] Leetspeak compilation parameters toggled. Aggressive matrix: ${config.aggressive_leet}`, "success");
-            } else {
-                logLine("[-] Command mapping variant unknown. Syntax: toggle leet", "error");
-            }
-            break;
-            
-        case 'clear':
-            historyBox.innerHTML = '';
-            break;
-            
-        case 'run':
-            logLine("[*] Compiling algorithmic permutation logic components...", "system");
-            executeEnginePipeline();
-            break;
-            
-        default:
-            logLine(`[-] Command context error: Directive "${primaryCmd}" unknown to execution shell. Type 'help'.`, "error");
-    }
+    div.innerHTML = text;
+    screen.appendChild(div);
+    screen.scrollTop = screen.scrollHeight;
 }
 
 function scorePasswordProbability(pwd, originalBases, years) {
     let score = 0;
     let pwdLower = pwd.toLowerCase();
 
-    // 1. CRITICAL LEVEL: Check against global common leaks (Instant massive amplification)
     CRITICAL_COMMON_BASES.forEach(common => {
         if (pwdLower === common || pwdLower.startsWith(common)) score += 500;
     });
 
-    // 2. Structural Capitalization Logic (Massive weighting in real-world breaches)
     if (/^[A-Z][a-z0-9]+$/.test(pwd) || /^[A-Z][a-z0-9]+[^A-Za-z0-9]+$/.test(pwd)) score += 45;
     else if (/^[a-z0-9]+$/.test(pwd)) score += 25;
     else if (/^[A-Z0-9]+$/.test(pwd)) score += 10;
 
-    // 3. High-Risk Suffix Padding Rules
     years.forEach(year => {
         if (pwd.includes(year)) score += year.length === 4 ? 35 : 25;
     });
@@ -271,3 +232,19 @@ function applyLeet(word, aggressive) {
         }
     }
     let finalSet = new Set();
+    variants.forEach(v => mutateCase(v).forEach(c => finalSet.add(c)));
+    return Array.from(finalSet);
+}
+
+function executeHUDPipeline() {
+    const fields = ['firstName', 'middleName', 'lastName', 'nickname', 'partnerName', 'petName', 'birthYear', 'sportsTeam', 'hobby'];
+    let baseWords = [];
+    let originalCleanBases = [];
+    let years = [];
+
+    fields.forEach(id => {
+        let val = document.getElementById(id).value.trim();
+        if (val) {
+            if (/^\d{4}$/.test(val)) {
+                years.push(val);
+                years.push(val.substring(2));
