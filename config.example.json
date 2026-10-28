@@ -1,0 +1,32 @@
+{
+  "targets": [
+    {
+      "host": "example-client-domain.com",
+      "ports": [22, 80, 443],
+      "label": "Client name — authorized per signed agreement dated YYYY-MM-DD"
+    },
+    {
+      "host": "testphp.vulnweb.com",
+      "ports": [80],
+      "label": "Acunetix/Invicti's own permanently-hosted test app — intentionally vulnerable, built for exactly this"
+    },
+    {
+      "host": "test.acunetix.com",
+      "ports": [80, 443],
+      "label": "Acunetix/Invicti's second public test target"
+    },
+    {
+      "host": "demo.owasp-juice.shop",
+      "ports": [443],
+      "label": "OWASP's official public Juice Shop demo — no uptime guarantee per their own docs, so gaps here aren't a real finding"
+    }
+  ],
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "from_addr": "you@example.com",
+    "to_addr": "you@example.com",
+    "user_env": "VULN_WATCH_SMTP_USER",
+    "pass_env": "VULN_WATCH_SMTP_PASS"
+  }
+}

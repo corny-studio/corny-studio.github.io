@@ -1,0 +1,32 @@
+{
+  "targets": [
+    {
+      "host": "corny-studio.github.io",
+      "ports": [22, 80, 443],
+      "label": "my own portfolio site"
+    },
+    {
+      "host": "testphp.vulnweb.com",
+      "ports": [80],
+      "label": "Acunetix/Invicti's own permanently-hosted test app"
+    },
+    {
+      "host": "test.acunetix.com",
+      "ports": [80, 443],
+      "label": "Acunetix/Invicti's second public test target"
+    },
+    {
+      "host": "demo.owasp-juice.shop",
+      "ports": [443],
+      "label": "OWASP's official public Juice Shop demo"
+    }
+  ],
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "from_addr": "Curtcornwell123@gmail.com",
+    "to_addr": "Curtcornwell123@gmail.com",
+    "user_env": "VULN_WATCH_SMTP_USER",
+    "pass_env": "VULN_WATCH_SMTP_PASS"
+  }
+}
