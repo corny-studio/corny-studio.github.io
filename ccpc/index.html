@@ -3,158 +3,250 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ccpc@corny-studio: ~ Matrix Terminal HUD</title>
+    <title>CCPC - Custom Component Password Cracker</title>
     <style>
         :root {
-            --bg-color: #030508;
-            --card-bg: #070b12;
-            --accent-color: #00ff66;
-            --accent-hover: #00cc52;
-            --text-color: #a3b3c6;
-            --border-color: #16222f;
-            --terminal-green: #39ff14;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --accent-color: #238636;
+            --accent-hover: #2ea043;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
         }
         body {
-            font-family: 'Courier New', Courier, monospace;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
             padding: 20px;
             display: flex;
             justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            box-sizing: border-box;
         }
-        .hud-container {
+        .container {
             width: 100%;
-            max-width: 1200px;
+            max-width: 800px;
             background: var(--card-bg);
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 0 35px rgba(0, 255, 102, 0.08);
-            display: grid;
-            grid-template-columns: 1fr 1.2fr;
-            gap: 20px;
-        }
-        @media (max-width: 900px) {
-            .hud-container { grid-template-columns: 1fr; }
-        }
-        .panel {
-            background-color: #020406;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
+            border-radius: 6px;
+            padding: 24px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
-        h2 {
-            margin-top: 0;
-            font-size: 16px;
-            color: var(--accent-color);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            text-shadow: 0 0 8px rgba(0, 255, 102, 0.3);
-        }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        h2 { border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-top: 0; color: #fff; }
+        .welcome-sub { color: #8b949e; font-size: 14px; margin-top: -4px; margin-bottom: 20px; font-style: italic; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
         @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
         .form-group { display: flex; flex-direction: column; }
-        label { margin-bottom: 4px; font-weight: bold; font-size: 11px; color: #fff; text-transform: uppercase; }
+        label { margin-bottom: 6px; font-weight: 600; font-size: 14px; }
         input[type="text"] {
-            background-color: #05080c;
+            background-color: var(--bg-color);
             border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--terminal-green);
+            border-radius: 6px;
+            color: #fff;
             padding: 8px;
-            font-size: 13px;
-            font-family: inherit;
+            font-size: 14px;
         }
-        input[type="text"]:focus {
-            outline: none;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 5px rgba(0, 255, 102, 0.4);
-        }
-        .toggle-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; font-size: 12px; color: #fff; }
-        .btn-matrix {
-            background-color: transparent;
-            color: var(--accent-color);
-            border: 1px solid var(--accent-color);
-            border-radius: 4px;
-            padding: 12px;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            font-family: inherit;
-            text-transform: uppercase;
-            transition: all 0.2s;
-            margin-top: auto;
-        }
-        .btn-matrix:hover {
+        .toggle-group { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+        .btn-container { display: grid; grid-template-columns: 3fr 1fr; gap: 12px; }
+        button {
             background-color: var(--accent-color);
-            color: #000;
-            box-shadow: 0 0 12px rgba(0, 255, 102, 0.3);
+            color: #fff;
+            border: 1px solid rgba(27,31,35,0.15);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
         }
-        .terminal-screen {
-            background-color: #000;
-            border: 1px solid #1f2937;
-            border-radius: 4px;
-            padding: 15px;
-            flex-grow: 1;
-            overflow-y: auto;
-            max-height: 480px;
-            min-height: 350px;
+        button:hover { background-color: var(--accent-hover); }
+        .copy-btn { background-color: #21262d; border: 1px solid var(--border-color); }
+        .copy-btn:hover { background-color: #30363d; }
+        .output-box { margin-top: 20px; }
+        textarea {
+            width: 100%;
+            height: 250px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: #39ff14;
+            font-family: "Courier New", Courier, monospace;
+            padding: 12px;
+            border-radius: 6px;
+            box-sizing: border-box;
+            resize: vertical;
         }
-        .output-line { margin-bottom: 5px; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
-        .system { color: #58a6ff; }
-        .error { color: #ff3333; }
-        .success { color: #00ff66; }
-        .critical { color: #ff3333; font-weight: bold; background-color: rgba(255, 51, 51, 0.15); padding: 0 4px; }
-        .terminal-header { color: #666; font-size: 11px; margin-bottom: 10px; border-bottom: 1px dashed #222; padding-bottom: 8px; }
+        .footer-metrics { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: #8b949e; }
+        #copyStatus { color: #58a6ff; font-weight: 600; }
     </style>
 </head>
 <body>
 
-<div class="hud-container">
-    <div class="panel">
-        <h2>Parameters HUD</h2>
-        <div class="grid">
-            <div class="form-group"><label>First Name</label><input type="text" id="firstName" placeholder="Target First Name"></div>
-            <div class="form-group"><label>Middle Name</label><input type="text" id="middleName" placeholder="Target Middle Name"></div>
-            <div class="form-group"><label>Last Name</label><input type="text" id="lastName" placeholder="Target Last Name"></div>
-            <div class="form-group"><label>Nickname</label><input type="text" id="nickname" placeholder="Target Nickname"></div>
-            <div class="form-group"><label>Partner</label><input type="text" id="partnerName" placeholder="Partner/Spouse"></div>
-            <div class="form-group"><label>Pet Name</label><input type="text" id="petName" placeholder="Pet Name"></div>
-            <div class="form-group"><label>Birth Year</label><input type="text" id="birthYear" placeholder="YYYY"></div>
-            <div class="form-group"><label>Sports Team</label><input type="text" id="sportsTeam" placeholder="Team Name"></div>
-        </div>
-        <div class="form-group" style="margin-bottom: 15px;"><label>Hobby / Keyword</label><input type="text" id="hobby" placeholder="Key Hobbies/Keywords"></div>
-        
-        <div class="toggle-group">
-            <input type="checkbox" id="aggressiveLeet">
-            <label for="aggressiveLeet">Combinatorial Leetspeak Branching</label>
-        </div>
-        
-        <button class="btn-matrix" id="runSimulationBtn">Run Exposure Simulator</button>
+<div class="container">
+    <h2>🎯 See how hackers crack your password!</h2>
+    <div class="welcome-sub">Authenticated Operator: corny-studio</div>
+    
+    <div class="grid">
+        <div class="form-group"><label>First Name</label><input type="text" id="firstName" placeholder="Target First Name"></div>
+        <div class="form-group"><label>Middle Name</label><input type="text" id="middleName" placeholder="Target Middle Name"></div>
+        <div class="form-group"><label>Last Name</label><input type="text" id="lastName" placeholder="Target Last Name"></div>
+        <div class="form-group"><label>Nickname</label><input type="text" id="nickname" placeholder="Target Nickname"></div>
+        <div class="form-group"><label>Partner's Name</label><input type="text" id="partnerName" placeholder="Partner/Spouse"></div>
+        <div class="form-group"><label>Pet's Name</label><input type="text" id="petName" placeholder="Pet Name"></div>
+        <div class="form-group"><label>Birth Year (YYYY)</label><input type="text" id="birthYear" placeholder="Birth Year"></div>
+        <div class="form-group"><label>Favorite Sports Team</label><input type="text" id="sportsTeam" placeholder="Team Name"></div>
+        <div class="form-group" style="grid-column: span 2;"><label>Hobby Keyword</label><input type="text" id="hobby" placeholder="Key Hobbies/Keywords"></div>
     </div>
 
-    <div class="panel">
-        <h2>See how hackers crack your password!</h2>
-        <div class="terminal-screen" id="terminalScreen">
-            <div class="terminal-header">
-CCPC Core v3.2 // OPERATOR: corny-studio // SYSTEM STATUS: ACTIVE // CSP COMPLIANT
---------------------------------------------------------------------------------
-            </div>
-            <div class="output-line system">[*] Monitoring core mutation matrix layer... Ready.</div>
-            <div class="output-line system">[*] Empirical breach data matrices loaded (RockYou filters online).</div>
-            <div class="output-line">[System Idle] Configure vector inputs on the left and trigger compilation.</div>
+    <div class="toggle-group">
+        <input type="checkbox" id="aggressiveLeet">
+        <label for="aggressiveLeet">Enable Aggressive Leetspeak Mutations</label>
+    </div>
+
+    <div class="btn-container">
+        <button id="generateBtn">Generate Prioritized Wordlist</button>
+        <button class="copy-btn" id="copyBtn">📋 Copy</button>
+    </div>
+
+    <div class="output-box">
+        <label>CCPC Output Stream (Prioritized, 8-32 Characters):</label>
+        <textarea id="output" readonly placeholder="Awaiting configuration parameters..."></textarea>
+        <div class="footer-metrics">
+            <span id="copyStatus"></span>
+            <span id="stats">Count: 0 entries</span>
         </div>
     </div>
 </div>
 
-<!-- Linked as a clean external file allowed by script-src 'self' -->
-<script src="/ccpc/ccpc.js"></script>
-</body>
-</html>
+<script>
+const COMMON_NUMBERS = ["123", "1", "1234", "12", "12345", "777", "2026"];
+const COMMON_SPECIALS = ["!", "@", "#", "$", "*", "?"];
+const LEET_MAP = { 'a': '4', 'e': '3', 'i': '1', 'o': '0', 's': '5', 't': '7' };
+
+const CRITICAL_COMMON_BASES = [
+    "password", "123456", "123456789", "qwerty", "iloveyou", 
+    "princess", "admin", "welcome", "letmein", "charlie"
+];
+
+function scorePasswordProbability(pwd, originalBases, years) {
+    let score = 0;
+    let pwdLower = pwd.toLowerCase();
+
+    CRITICAL_COMMON_BASES.forEach(common => {
+        if (pwdLower === common || pwdLower.startsWith(common)) score += 500;
+    });
+
+    if (/^[A-Z][a-z0-9]+$/.test(pwd) || /^[A-Z][a-z0-9]+[^A-Za-z0-9]+$/.test(pwd)) score += 45;
+    else if (/^[a-z0-9]+$/.test(pwd)) score += 25;
+    else if (/^[A-Z0-9]+$/.test(pwd)) score += 10;
+
+    years.forEach(year => {
+        if (pwd.includes(year)) score += year.length === 4 ? 35 : 25;
+    });
+
+    COMMON_NUMBERS.forEach(num => {
+        if (pwd.endsWith(num) || pwd.includes(num + "!")) score += 20;
+    });
+
+    if (pwd.endsWith("!") || pwd.endsWith("!@#")) score += 30;
+    if (pwd.endsWith("@")) score += 15;
+    if (pwd.length > 16) score -= (pwd.length - 16) * 4;
+
+    return score;
+}
+
+function mutateCase(word) {
+    if (!word) return [];
+    const lower = word.toLowerCase();
+    const upper = word.toUpperCase();
+    const cap = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    const swap = word.split('').map(c => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()).join('');
+    return [...new Set([lower, upper, cap, swap])];
+}
+
+function applyLeet(word, aggressive) {
+    let variants = [word.toLowerCase()];
+    if (!aggressive) {
+        let light = word.toLowerCase();
+        for (let [char, sub] of Object.entries(LEET_MAP)) {
+            light = light.replaceAll(char, sub);
+        }
+        variants.push(light);
+    } else {
+        let arr = word.toLowerCase().split('');
+        for (let i = 0; i < arr.length; i++) {
+            if (LEET_MAP[arr[i]]) {
+                let len = variants.length;
+                for (let j = 0; j < len; j++) {
+                    let v = variants[j].split('');
+                    v[i] = LEET_MAP[arr[i]];
+                    variants.push(v.join(''));
+                }
+            }
+        }
+    }
+    
+    let finalSet = new Set();
+    variants.forEach(v => {
+        mutateCase(v).forEach(c => finalSet.add(c));
+    });
+    return Array.from(finalSet);
+}
+
+function generateWordlist() {
+    const fields = ['firstName', 'middleName', 'lastName', 'nickname', 'partnerName', 'petName', 'birthYear', 'sportsTeam', 'hobby'];
+    let baseWords = [];
+    let originalCleanBases = [];
+    let years = [];
+
+    fields.forEach(id => {
+        let val = document.getElementById(id).value.trim();
+        if (val) {
+            if (/^\d{4}$/.test(val)) {
+                years.push(val);
+                years.push(val.substring(2));
+            } else if (val.length >= 2) {
+                baseWords.push(val);
+                originalCleanBases.push(val.toLowerCase());
+            }
+        }
+    });
+
+    const aggressive = document.getElementById('aggressiveLeet').checked;
+    let mutatedBases = new Set();
+    baseWords.forEach(word => {
+        applyLeet(word, aggressive).forEach(b => mutatedBases.add(b));
+    });
+
+    CRITICAL_COMMON_BASES.forEach(b => {
+        applyLeet(b, aggressive).forEach(b => mutatedBases.add(b));
+    });
+    
+    let mutatedBasesArr = Array.from(mutatedBases);
+    let targetNumbers = [...new Set([...years, ...COMMON_NUMBERS])];
+    let seen = new Set();
+    let rawResults = [];
+
+    function addPass(pwd) {
+        if (pwd.length >= 6 && pwd.length <= 32 && !seen.has(pwd)) {
+            seen.add(pwd);
+            let weight = scorePasswordProbability(pwd, originalCleanBases, years);
+            rawResults.push({ password: pwd, weight: weight });
+        }
+    }
+
+    mutatedBasesArr.forEach(base => {
+        addPass(base);
+        targetNumbers.forEach(n => addPass(`${base}${n}`));
+        COMMON_SPECIALS.forEach(s => addPass(`${base}${s}`));
+        targetNumbers.forEach(n => {
+            COMMON_SPECIALS.forEach(s => {
+                addPass(`${base}${n}${s}`);
+                addPass(`${base}${s}${n}`);
+                addPass(`${s}${base}${n}`);
+            });
+        });
+    });
+
+    for (let i = 0; i < mutatedBasesArr.length; i++) {
+        for (let j = 0; j < mutatedBasesArr.length; j++) {
+            if (i !== j && (mutatedBasesArr[i].length + mutatedBasesArr[j].length <= 16)) {
+                let combo = `${mutatedBasesArr[i]}${mutatedBasesArr[j]}`;
