@@ -138,7 +138,8 @@
             <label for="aggressiveLeet">Combinatorial Leetspeak Branching</label>
         </div>
         
-        <button class="btn-matrix" onclick="executeHUDPipeline()">Run Exposure Simulator</button>
+        <!-- Safe Event listener link wrapper button hook -->
+        <button class="btn-matrix" id="runSimulationBtn">Run Exposure Simulator</button>
     </div>
 
     <!-- RIGHT PANEL: SCROLLING TERMINAL LOG STREAM -->
@@ -168,6 +169,7 @@ const CRITICAL_COMMON_BASES = [
 
 function logTerminal(text, className) {
     const screen = document.getElementById('terminalScreen');
+    if (!screen) return;
     let div = document.createElement('div');
     div.className = `output-line ${className}`;
     div.innerHTML = text;
@@ -243,8 +245,7 @@ function executeHUDPipeline() {
     let years = [];
 
     fields.forEach(id => {
-        let val = document.getElementById(id).value.trim();
-        if (val) {
-            if (/^\d{4}$/.test(val)) {
-                years.push(val);
-                years.push(val.substring(2));
+        let el = document.getElementById(id);
+        if (el) {
+            let val = el.value.trim();
+            if (val) {
