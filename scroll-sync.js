@@ -8,7 +8,7 @@
   // Visitors who arrive on the GitHub address are sent to the secure address, which adds the security headers
   // that GitHub cannot send. Set SECURE_SITE to your Worker address with no slash at the end, for example
   // "https://corny-studio.your-subdomain.workers.dev". Left empty, nothing is redirected.
-  var SECURE_SITE = "";
+  var SECURE_SITE = "https://corny-studio.curt-dev.workers.dev";
   if (/^https:\/\/[a-z0-9.-]+$/i.test(SECURE_SITE) && /\.github\.io$/i.test(location.hostname)) {
     location.replace(SECURE_SITE + location.pathname + location.search + location.hash);
     return;
