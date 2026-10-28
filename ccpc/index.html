@@ -118,7 +118,6 @@
 <body>
 
 <div class="hud-container">
-    <!-- LEFT PANEL: INPUT HUD VECTOR CONTROL -->
     <div class="panel">
         <h2>Parameters HUD</h2>
         <div class="grid">
@@ -138,16 +137,14 @@
             <label for="aggressiveLeet">Combinatorial Leetspeak Branching</label>
         </div>
         
-        <!-- Double Insulated Action Button Mapping -->
-        <button class="btn-matrix" id="runSimulationBtn" onclick="executeHUDPipeline()">Run Exposure Simulator</button>
+        <button class="btn-matrix" id="runSimulationBtn">Run Exposure Simulator</button>
     </div>
 
-    <!-- RIGHT PANEL: SCROLLING TERMINAL LOG STREAM -->
     <div class="panel">
         <h2>See how hackers crack your password!</h2>
         <div class="terminal-screen" id="terminalScreen">
             <div class="terminal-header">
-CCPC Core v3.1 // OPERATOR: corny-studio // SYSTEM STATUS: ACTIVE // CACHE: BYPASSED
+CCPC Core v3.2 // OPERATOR: corny-studio // SYSTEM STATUS: ACTIVE // CSP COMPLIANT
 --------------------------------------------------------------------------------
             </div>
             <div class="output-line system">[*] Monitoring core mutation matrix layer... Ready.</div>
@@ -157,89 +154,7 @@ CCPC Core v3.1 // OPERATOR: corny-studio // SYSTEM STATUS: ACTIVE // CACHE: BYPA
     </div>
 </div>
 
-<!-- Added a precise cache-busting index parameter key to completely wipe out old Cloudflare edge memory strings -->
-<script data-version="3.1.2_purge">
-const COMMON_NUMBERS = ["123", "1", "1234", "12", "12345", "777", "2026"];
-const COMMON_SPECIALS = ["!", "@", "#", "$", "*", "?"];
-const LEET_MAP = { 'a': '4', 'e': '3', 'i': '1', 'o': '0', 's': '5', 't': '7' };
-
-const CRITICAL_COMMON_BASES = [
-    "password", "123456", "123456789", "qwerty", "iloveyou", 
-    "princess", "admin", "welcome", "letmein", "charlie"
-];
-
-function logTerminal(text, className) {
-    const screen = document.getElementById('terminalScreen');
-    if (!screen) return;
-    let div = document.createElement('div');
-    div.className = `output-line ${className}`;
-    div.innerHTML = text;
-    screen.appendChild(div);
-    screen.scrollTop = screen.scrollHeight;
-}
-
-function scorePasswordProbability(pwd, originalBases, years) {
-    let score = 0;
-    let pwdLower = pwd.toLowerCase();
-
-    CRITICAL_COMMON_BASES.forEach(common => {
-        if (pwdLower === common || pwdLower.startsWith(common)) score += 500;
-    });
-
-    if (/^[A-Z][a-z0-9]+$/.test(pwd) || /^[A-Z][a-z0-9]+[^A-Za-z0-9]+$/.test(pwd)) score += 45;
-    else if (/^[a-z0-9]+$/.test(pwd)) score += 25;
-    else if (/^[A-Z0-9]+$/.test(pwd)) score += 10;
-
-    years.forEach(year => {
-        if (pwd.includes(year)) score += year.length === 4 ? 35 : 25;
-    });
-
-    COMMON_NUMBERS.forEach(num => {
-        if (pwd.endsWith(num) || pwd.includes(num + "!")) score += 20;
-    });
-
-    if (pwd.endsWith("!") || pwd.endsWith("!@#")) score += 30;
-    if (pwd.endsWith("@")) score += 15;
-    if (pwd.length > 16) score -= (pwd.length - 16) * 4;
-
-    return score;
-}
-
-function mutateCase(word) {
-    const lower = word.toLowerCase();
-    const upper = word.toUpperCase();
-    const cap = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    const swap = word.split('').map(c => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()).join('');
-    return [...new Set([lower, upper, cap, swap])];
-}
-
-function applyLeet(word, aggressive) {
-    let variants = [word.toLowerCase()];
-    if (!aggressive) {
-        let light = word.toLowerCase();
-        for (let [char, sub] of Object.entries(LEET_MAP)) {
-            light = light.replaceAll(char, sub);
-        }
-        variants.push(light);
-    } else {
-        let arr = word.toLowerCase().split('');
-        for (let i = 0; i < arr.length; i++) {
-            if (LEET_MAP[arr[i]]) {
-                let len = variants.length;
-                for (let j = 0; j < len; j++) {
-                    let v = variants[j].split('');
-                    v[i] = LEET_MAP[arr[i]];
-                    variants.push(v.join(''));
-                }
-            }
-        }
-    }
-    let finalSet = new Set();
-    variants.forEach(v => mutateCase(v).forEach(c => finalSet.add(c)));
-    return Array.from(finalSet);
-}
-
-function executeHUDPipeline() {
-    const fields = ['firstName', 'middleName', 'lastName', 'nickname', 'partnerName', 'petName', 'birthYear', 'sportsTeam', 'hobby'];
-    let baseWords = [];
-    let originalCleanBases = [];
+<!-- Linked as a clean external file allowed by script-src 'self' -->
+<script src="/ccpc/ccpc.js"></script>
+</body>
+</html>
