@@ -51,7 +51,7 @@
   h1 { font-size: clamp(2.9rem, 9vw, 4.2rem); line-height: 1; letter-spacing: -0.025em; }
   h2 { font-size: 1.45rem; line-height: 1.25; margin-bottom: 1rem; }
 
- .tagline { margin: 0.9rem 0 1.6rem; font-size: 1.15rem; color: #00ff66; max-width: 34rem; font-weight: bold; text-shadow: 0 0 5px rgba(0, 255, 102, 0.3); }
+  .tagline { margin: 0.9rem 0 1.6rem; font-size: 1.15rem; color: #00ff66; max-width: 34rem; font-weight: bold; text-shadow: 0 0 5px rgba(0, 255, 102, 0.3); }
 
   a { color: var(--accent); text-underline-offset: 0.2em; }
   a:hover { color: #b9e0ff; }
@@ -97,10 +97,62 @@
   details ul { margin-top: 0.8rem; }
   .muted { color: var(--muted); font-size: 0.95rem; }
 
-  /* Keep the page readable and light when motion or a small screen would make the scene a poor fit. */
+  /* CCPC: a tab fixed to the right edge that opens a slide-out panel. Built as its own layer so it
+     never competes with the page's reading column, and closed by default so it never gets in the way. */
+  #ccpc-tab {
+    position: fixed; top: 50%; right: 0; transform: translateY(-50%) rotate(180deg);
+    writing-mode: vertical-rl; z-index: 30;
+    background: var(--panel); color: var(--bright, var(--text));
+    border: 1px solid var(--rule); border-right: 0; border-radius: 8px 0 0 8px;
+    padding: 0.9rem 0.5rem; font: 700 0.8rem var(--sans); letter-spacing: 0.08em;
+    cursor: pointer; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  #ccpc-tab:hover, #ccpc-tab:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+  #ccpc-panel {
+    position: fixed; top: 0; right: 0; height: 100vh; width: min(22rem, 100vw);
+    background: var(--panel); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-left: 1px solid var(--rule); z-index: 31; transform: translateX(100%);
+    transition: transform 0.25s ease; display: flex; flex-direction: column;
+    padding: 1.25rem 1.1rem; box-sizing: border-box; font-size: 0.92rem; overflow-y: auto;
+  }
+  #ccpc-panel.open { transform: translateX(0); }
+  #ccpc-panel h2 { font-size: 1.1rem; margin-bottom: 0.3rem; }
+  #ccpc-panel .ccpc-sub { color: var(--muted); font-size: 0.8rem; margin-bottom: 1rem; line-height: 1.5; }
+  #ccpc-close { position: absolute; top: 0.9rem; right: 1rem; background: none; border: 0; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.4rem; }
+  #ccpc-close:hover, #ccpc-close:focus-visible { color: var(--accent); outline: none; }
+  #ccpc-panel label:not(.ccpc-check) { display: block; font-size: 0.75rem; color: var(--muted); margin: 0.7rem 0 0.25rem; }
+  #ccpc-panel input, #ccpc-panel select {
+    width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.04); color: var(--bright, var(--text));
+    border: 1px solid var(--rule); border-radius: 6px; padding: 0.5rem 0.6rem; font: inherit;
+  }
+  #ccpc-panel input:focus, #ccpc-panel select:focus { border-color: var(--accent); outline: none; }
+  .ccpc-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: var(--muted); margin-top: 0.7rem; }
+  .ccpc-check input { width: auto; }
+  .ccpc-row { display: flex; gap: 0.5rem; margin-top: 0.9rem; }
+  .ccpc-row button {
+    flex: 1; padding: 0.5rem 0.6rem; border-radius: 6px; border: 1px solid var(--rule);
+    background: transparent; color: var(--bright, var(--text)); font: inherit; cursor: pointer;
+  }
+  #ccpc-start { border-color: var(--accent); color: var(--accent); }
+  .ccpc-row button:disabled { opacity: 0.4; cursor: default; }
+  .ccpc-row button:hover:not(:disabled), .ccpc-row button:focus-visible:not(:disabled) { background: rgba(124,199,255,0.08); outline: none; }
+  #ccpc-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; font-size: 0.75rem; color: var(--muted); margin-top: 1rem; }
+  #ccpc-status.bad { color: #ff9a9a; } #ccpc-status.good { color: #7ee2a8; }
+  #ccpc-top { font: 0.78rem ui-monospace, Menlo, Consolas, monospace; color: var(--bright, var(--text)); max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ccpc-log { flex: 0 1 auto; overflow-y: auto; max-height: 30vh; margin-top: 0.7rem; font: 0.78rem/1.5 ui-monospace, Menlo, Consolas, monospace; border-top: 1px solid var(--rule); padding-top: 0.7rem; }
+  .ccpc-line { margin-bottom: 0.4rem; color: var(--muted); } .ccpc-line.bad { color: #ff9a9a; } .ccpc-line.good { color: #7ee2a8; }
+  @media (max-width: 640px) { #ccpc-panel { width: 100vw; } }
+
+  /* On phones, the background stays on and shows through a more transparent panel instead of being
+     hidden outright. --scene-zoom is raised further here (a bigger number draws fewer pixels), to make
+     room for weaker phone GPUs now that the scene is visible the whole time, not just on wide screens.
+     The reading column goes full width, since there's no room for it beside the scene on a narrow one. */
   @media (max-width: 640px) {
-    #space-hull { display: none; }
-    main { margin-left: 0; border-right: 0; }
+    :root { --scene-zoom: 1.6; }
+    main {
+      margin-left: 0; border-right: 0;
+      background: rgba(5, 8, 13, 0.6);
+    }
     dl { grid-template-columns: 1fr; gap: 0.2rem; }
     dd { margin-bottom: 0.9rem; }
   }
@@ -117,7 +169,7 @@
     #space-hull { display: none; }
     main { max-width: none; margin: 0; padding: 0; background: none; border: 0; min-height: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
     h1, h2, .project h3, dt { color: #000; }
-    .tagline { color: #333; }
+    .tagline { color: #333; text-shadow: none; }
     a, .links a, .btn { color: #000; border: 0; padding: 0; }
     .links { display: block; }
     .links li { display: block; }
@@ -202,12 +254,39 @@
   </section>
 </main>
 
+<button id="ccpc-tab" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="ccpc-panel">CCPC</button>
+<aside id="ccpc-panel" aria-hidden="true" aria-label="CCPC: Curt Cornwell Password Cracker, a browser-only demo">
+  <button id="ccpc-close" type="button" aria-label="Close">&#10005;</button>
+  <h2>CCPC</h2>
+  <p class="ccpc-sub">Curt Cornwell Password Cracker. Type a password you've made up for this demo (never a real one). It's tested against five tiers of guesses, highest-probability first: exact common passwords, common passwords with a suffix, capitalization changes, leetspeak swaps, then a short brute-force search. Entirely in your browser; nothing is sent anywhere or stored.</p>
+  <label for="ccpc-input">Password to test</label>
+  <input id="ccpc-input" type="text" autocomplete="off" spellcheck="false" placeholder="Try something like hunter2">
+  <label for="ccpc-algo">Hash algorithm</label>
+  <select id="ccpc-algo">
+    <option value="SHA-256">SHA-256 (the modern default)</option>
+    <option value="SHA-1">SHA-1 (fast, outdated)</option>
+  </select>
+  <label class="ccpc-check"><input id="ccpc-aggressive" type="checkbox">Aggressive leetspeak (more letter/number swaps, tier 4 only)</label>
+  <div class="ccpc-row">
+    <button id="ccpc-start" type="button">Crack it</button>
+    <button id="ccpc-stop" type="button" disabled>Stop</button>
+  </div>
+  <div id="ccpc-meta">
+    <span id="ccpc-stage">Idle</span>
+    <span id="ccpc-status">Ready</span>
+  </div>
+  <div id="ccpc-meta"><span>Attempts</span><span id="ccpc-tried">0</span></div>
+  <div id="ccpc-meta"><span>Current guess</span><span id="ccpc-top">&mdash;</span></div>
+  <div id="ccpc-log" aria-live="polite"></div>
+</aside>
+
 <!-- The space background. It lives in background.html, in the same folder as this file.
      The settings after the question mark make it lighter to draw: q=medium uses smaller textures and no edge smoothing, and detail=0 turns off fine surface noise.
      Add &amp;sats=0&amp;falcon=0 to remove the satellites and the rocket launches too. Use q=high for a sharper scene. -->
 <iframe src="background.html?q=medium&amp;detail=0" id="space-hull" title="Animated space background" aria-hidden="true" tabindex="-1"></iframe>
 <script src="scroll-sync.js"></script>
 <script src="security-check.js"></script>
+<script src="ccpc.js" defer></script>
 
    <!-- The button link is now safely inside the body of the page -->
     <a href="/ccpc/" style="display: inline-block; padding: 10px 20px; background-color: #238636; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px;">
