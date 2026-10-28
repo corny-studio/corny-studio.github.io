@@ -116,7 +116,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="CCPC_BYPASS_TOKEN">
 const COMMON_NUMBERS = ["123", "1", "1234", "12", "12345", "777", "2026"];
 const COMMON_SPECIALS = ["!", "@", "#", "$", "*", "?"];
 const LEET_MAP = { 'a': '4', 'e': '3', 'i': '1', 'o': '0', 's': '5', 't': '7' };
@@ -126,7 +126,7 @@ const CRITICAL_COMMON_BASES = [
     "princess", "admin", "welcome", "letmein", "charlie"
 ];
 
-function scorePasswordProbability(pwd, originalBases, years) {
+function scorePasswordProbability(pwd, originalCleanBases, years) {
     let score = 0;
     let pwdLower = pwd.toLowerCase();
 
@@ -249,4 +249,3 @@ function generateWordlist() {
     for (let i = 0; i < mutatedBasesArr.length; i++) {
         for (let j = 0; j < mutatedBasesArr.length; j++) {
             if (i !== j && (mutatedBasesArr[i].length + mutatedBasesArr[j].length <= 16)) {
-                let combo = `${mutatedBasesArr[i]}${mutatedBasesArr[j]}`;
