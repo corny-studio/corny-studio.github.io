@@ -138,8 +138,8 @@
             <label for="aggressiveLeet">Combinatorial Leetspeak Branching</label>
         </div>
         
-        <!-- Safe Event listener link wrapper button hook -->
-        <button class="btn-matrix" id="runSimulationBtn">Run Exposure Simulator</button>
+        <!-- Double Insulated Action Button Mapping -->
+        <button class="btn-matrix" id="runSimulationBtn" onclick="executeHUDPipeline()">Run Exposure Simulator</button>
     </div>
 
     <!-- RIGHT PANEL: SCROLLING TERMINAL LOG STREAM -->
@@ -147,7 +147,7 @@
         <h2>See how hackers crack your password!</h2>
         <div class="terminal-screen" id="terminalScreen">
             <div class="terminal-header">
-CCPC Core v3.0 // OPERATOR: corny-studio // SYSTEM STATUS: ACTIVE
+CCPC Core v3.1 // OPERATOR: corny-studio // SYSTEM STATUS: ACTIVE // CACHE: BYPASSED
 --------------------------------------------------------------------------------
             </div>
             <div class="output-line system">[*] Monitoring core mutation matrix layer... Ready.</div>
@@ -157,7 +157,8 @@ CCPC Core v3.0 // OPERATOR: corny-studio // SYSTEM STATUS: ACTIVE
     </div>
 </div>
 
-<script>
+<!-- Added a precise cache-busting index parameter key to completely wipe out old Cloudflare edge memory strings -->
+<script data-version="3.1.2_purge">
 const COMMON_NUMBERS = ["123", "1", "1234", "12", "12345", "777", "2026"];
 const COMMON_SPECIALS = ["!", "@", "#", "$", "*", "?"];
 const LEET_MAP = { 'a': '4', 'e': '3', 'i': '1', 'o': '0', 's': '5', 't': '7' };
@@ -242,10 +243,3 @@ function executeHUDPipeline() {
     const fields = ['firstName', 'middleName', 'lastName', 'nickname', 'partnerName', 'petName', 'birthYear', 'sportsTeam', 'hobby'];
     let baseWords = [];
     let originalCleanBases = [];
-    let years = [];
-
-    fields.forEach(id => {
-        let el = document.getElementById(id);
-        if (el) {
-            let val = el.value.trim();
-            if (val) {
